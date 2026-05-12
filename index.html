@@ -23,24 +23,10 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px}
 
-/* ── LOGIN ───────────────────────────────── */
-#login-screen{
-  position:fixed;inset:0;background:var(--bg);z-index:2000;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:40px 24px;
-}
-.login-logo{width:80px;height:80px;display:block;border-radius:18px;box-shadow:0 4px 16px rgba(0,0,0,.10);margin-bottom:22px}
-.login-title{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
-.login-sub{font-size:9.5px;letter-spacing:3px;color:var(--mu2);text-transform:uppercase;margin-bottom:48px}
-.google-btn{
-  display:flex;align-items:center;gap:10px;background:#fff;
-  border:1px solid var(--bd2);border-radius:14px;padding:13px 24px;
-  font-size:15px;font-weight:600;color:var(--tx);
-  box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s
-}
-.google-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.14);transform:translateY(-1px)}
-.google-ico{width:20px;height:20px}
-.login-hint{margin-top:16px;font-size:11px;color:var(--mu2)}
+/* ── LOGIN (removed) ─────────────────────── */
+
+/* ── USER BAR (hidden when no auth) ─────── */
+.user-bar{display:none}
 
 /* ── PAGES ─────────────────────────────── */
 .page{display:none;min-height:100vh;flex-direction:column;max-width:640px;margin:0 auto;width:100%}
@@ -217,41 +203,10 @@ input,select,textarea{font-family:inherit}
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-<!-- ═══ LOGIN SCREEN ════════════════════════════════ -->
-<div id="login-screen">
-  <svg class="login-logo" viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
-    <rect width="76" height="76" rx="18" fill="#ffffff" stroke="#e5e5ea" stroke-width="1"/>
-    <polyline points="14,40 14,13 41,13" fill="none" stroke="#1c1c1e" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"/>
-    <polyline points="62,36 62,63 35,63" fill="none" stroke="#1c1c1e" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"/>
-    <polyline points="20,40 20,20 42,20" fill="none" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" opacity="0.5"/>
-    <polyline points="56,36 56,56 34,56" fill="none" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" opacity="0.5"/>
-    <rect x="11" y="10" width="6" height="6" rx="1" fill="#d1d1d6"/>
-    <rect x="38" y="10" width="6" height="6" rx="1" fill="#d1d1d6"/>
-    <rect x="59" y="60" width="6" height="6" rx="1" fill="#d1d1d6"/>
-    <rect x="32" y="60" width="6" height="6" rx="1" fill="#d1d1d6"/>
-    <rect x="25" y="25" width="9" height="9" rx="2" fill="#34c759"/>
-    <rect x="33.5" y="33.5" width="9" height="9" rx="2" fill="#ff3b30"/>
-    <rect x="42" y="42" width="9" height="9" rx="2" fill="#007aff"/>
-  </svg>
-  <div class="login-title">MBSU Prod</div>
-  <div class="login-sub">Make Beautiful Saturation Universe</div>
-  <button class="google-btn" onclick="signIn()">
-    <svg class="google-ico" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-    구글 계정으로 로그인
-  </button>
-  <p class="login-hint">팀원 구글 계정으로만 접속 가능합니다</p>
-</div>
-
 <!-- ═══ APP ROOT ══════════════════════════════════════ -->
-<div id="app-root" style="display:none">
+<div id="app-root">
 
 <!-- ═══ HOME ═══════════════════════════════════════ -->
 <div class="page active" id="pg-home">
@@ -520,8 +475,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.firestore();
+const db = firebase.firestore();
 
 // ════════════════════════════════════════
 //  CONSTANTS
@@ -600,37 +554,10 @@ let schedF = 'all';
 let eqF    = '전체';
 let filmoP = '주미르';
 let editEvId = null, editEqId = null, editFilmoId = null;
-let currentUser = null;
 let _unsubs = [];
 
-// ════════════════════════════════════════
-//  AUTH
-// ════════════════════════════════════════
-function signIn(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e => toast('로그인 실패: ' + e.message));
-}
-function handleSignOut(){
-  if(!confirm('로그아웃 하시겠습니까?')) return;
-  auth.signOut();
-}
-
-auth.onAuthStateChanged(async user => {
-  currentUser = user;
-  if(user){
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-root').style.display = '';
-    // 유저 사진
-    const photo = document.getElementById('user-photo');
-    if(user.photoURL){ photo.src = user.photoURL; photo.style.display = ''; }
-    else { photo.style.display = 'none'; }
-    await setupListeners();
-  } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app-root').style.display = 'none';
-    _unsubs.forEach(u => u()); _unsubs = [];
-  }
-});
+// 로그인 없이 바로 앱 시작
+setupListeners();
 
 // ════════════════════════════════════════
 //  FIRESTORE LISTENERS
