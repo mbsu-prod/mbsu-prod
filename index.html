@@ -197,6 +197,22 @@ input,select,textarea{font-family:inherit}
 .toast.show{opacity:1}
 .del-btn{font-size:10px;color:var(--red);border:1px solid rgba(255,59,48,.2);padding:4px 10px;border-radius:6px;background:var(--red-d);transition:all .15s}
 .del-btn:hover{background:rgba(255,59,48,.15)}
+
+/* ── PERSON CHIPS ───────────────────────── */
+.person-chips{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0}
+.pchip{padding:6px 13px;border-radius:20px;border:1px solid var(--bd);background:var(--bg);color:var(--mu);font-size:12px;font-weight:500;transition:all .15s;cursor:pointer}
+.pchip.active{border-color:currentColor;font-weight:700}
+
+/* ── OTT BADGE ──────────────────────────── */
+.ott-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);color:var(--mu);background:var(--bg);white-space:nowrap}
+.ott-netflix{background:#e50914;color:#fff;border-color:#e50914}
+.ott-disney{background:#113ccf;color:#fff;border-color:#113ccf}
+.ott-wavve{background:#004b96;color:#fff;border-color:#004b96}
+.ott-tving{background:#ff153c;color:#fff;border-color:#ff153c}
+.ott-coupang{background:#c00000;color:#fff;border-color:#c00000}
+.ott-apple{background:#1c1c1e;color:#fff;border-color:#1c1c1e}
+.ott-youtube{background:#ff0000;color:#fff;border-color:#ff0000}
+.ott-theater{background:#6d4c41;color:#fff;border-color:#6d4c41}
 </style>
 </head>
 <body>
@@ -355,15 +371,15 @@ input,select,textarea{font-family:inherit}
     <div class="fg"><label class="fl">제목</label><input class="fi" id="ev-name" type="text" placeholder="촬영명 / 일정 이름"></div>
     <div class="fg"><label class="fl">날짜</label><input class="fi" id="ev-date" type="date"></div>
     <div class="fg">
-      <label class="fl">담당자</label>
-      <select class="fsel" id="ev-person">
-        <option value="전체">전체 (공통 일정)</option>
-        <option value="주미르">주미르</option>
-        <option value="강영주">강영주</option>
-        <option value="김준석">김준석</option>
-        <option value="강지호">강지호</option>
-        <option value="정재민">정재민</option>
-      </select>
+      <label class="fl">담당자 (복수 선택 가능)</label>
+      <div class="person-chips" id="ev-persons">
+        <button type="button" class="pchip" data-p="전체" style="--pc:#8e8e93" onclick="toggleChip(this)">전체</button>
+        <button type="button" class="pchip" data-p="주미르" style="--pc:#007aff" onclick="toggleChip(this)">주미르</button>
+        <button type="button" class="pchip" data-p="강영주" style="--pc:#34c759" onclick="toggleChip(this)">강영주</button>
+        <button type="button" class="pchip" data-p="김준석" style="--pc:#ff6b35" onclick="toggleChip(this)">김준석</button>
+        <button type="button" class="pchip" data-p="강지호" style="--pc:#ff9f0a" onclick="toggleChip(this)">강지호</button>
+        <button type="button" class="pchip" data-p="정재민" style="--pc:#af52de" onclick="toggleChip(this)">정재민</button>
+      </div>
     </div>
     <div class="fg"><label class="fl">장소</label><input class="fi" id="ev-loc" type="text" placeholder="파주, 양평..."></div>
     <div class="fg">
@@ -444,6 +460,21 @@ input,select,textarea{font-family:inherit}
       </select>
     </div>
     <div class="fg"><label class="fl">역할</label><input class="fi" id="filmo-role" type="text" placeholder="촬영감독, 감독, 조명..."></div>
+    <div class="fg">
+      <label class="fl">공개 플랫폼</label>
+      <select class="fsel" id="filmo-ott">
+        <option value="">—</option>
+        <option value="Netflix">Netflix</option>
+        <option value="Disney+">Disney+</option>
+        <option value="Wavve">Wavve</option>
+        <option value="Tving">Tving</option>
+        <option value="Coupang Play">Coupang Play</option>
+        <option value="Apple TV+">Apple TV+</option>
+        <option value="YouTube">YouTube</option>
+        <option value="극장 개봉">극장 개봉</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
     <div class="fg"><label class="fl">메모</label><input class="fi" id="filmo-notes" type="text" placeholder="수상, 상영제 등 (선택)"></div>
     <div class="f-actions">
       <button class="f-del" id="filmo-del-btn" onclick="deleteFilmo()" style="display:none">삭제</button>
@@ -553,6 +584,50 @@ let filmoP = '주미르';
 let editEvId = null, editEqId = null, editFilmoId = null;
 let _unsubs = [];
 
+// ────────────────────────────────────────
+//  PERSON CHIP TOGGLE
+// ────────────────────────────────────────
+function toggleChip(btn){
+  const isAll = btn.dataset.p === '전체';
+  const chips = btn.closest('.person-chips').querySelectorAll('.pchip');
+  if(isAll){
+    chips.forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    // 전체 해제
+    btn.closest('.person-chips').querySelector('[data-p="전체"]').classList.remove('active');
+    btn.classList.toggle('active');
+    // 아무도 없으면 전체 선택
+    const anyActive = [...chips].some(c => c.classList.contains('active') && c.dataset.p !== '전체');
+    if(!anyActive) btn.closest('.person-chips').querySelector('[data-p="전체"]').classList.add('active');
+  }
+  // 색상 반영
+  chips.forEach(c => {
+    if(c.classList.contains('active')){
+      c.style.color = c.style.getPropertyValue('--pc') || '#8e8e93';
+      c.style.borderColor = c.style.getPropertyValue('--pc') || '#8e8e93';
+      c.style.background = (c.style.getPropertyValue('--pc') || '#8e8e93') + '18';
+    } else {
+      c.style.color = ''; c.style.borderColor = ''; c.style.background = '';
+    }
+  });
+}
+function getChipPersons(){
+  const active = [...document.querySelectorAll('#ev-persons .pchip.active')].map(b => b.dataset.p);
+  return active.length ? active : ['전체'];
+}
+function setChips(persons){
+  const arr = Array.isArray(persons) ? persons : [persons || '전체'];
+  document.querySelectorAll('#ev-persons .pchip').forEach(c => {
+    c.classList.remove('active');
+    c.style.color = ''; c.style.borderColor = ''; c.style.background = '';
+  });
+  arr.forEach(p => {
+    const c = document.querySelector(`#ev-persons .pchip[data-p="${p}"]`);
+    if(c) toggleChip(c);
+  });
+}
+
 // 로그인 없이 바로 앱 시작
 setupListeners();
 
@@ -654,7 +729,10 @@ function renderSched(){ renderSchedFilters(); renderCal(); renderEvList(); }
 
 function filtEvForPerson(){
   if(schedF==='all') return events;
-  return events.filter(e => e.person===schedF || e.person==='전체');
+  return events.filter(e => {
+    const ps = Array.isArray(e.person) ? e.person : [e.person];
+    return ps.includes(schedF) || ps.includes('전체');
+  });
 }
 
 function renderCal(){
@@ -673,17 +751,19 @@ function renderCal(){
     const ds=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const de=byD[ds]||[];
     const it=today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
-    const dots=de.slice(0,4).map(e=>`<span class="edot" style="background:${PERSON_COLOR[e.person]||'#8e8e93'}"></span>`).join('');
-    h+=`<div class="cal-day${it?' today':''}" onclick="selDay('${ds}')"><span class="dn">${d}</span><div class="edots">${dots}</div></div>`;
+    const dots=de.slice(0,4).map(e=>{const ps=Array.isArray(e.person)?e.person:[e.person];return`<span class="edot" style="background:${PERSON_COLOR[ps[0]]||'#8e8e93'}"></span>`;}).join('');
+    h+=`<div class="cal-day${it?' today':''}" onclick="selDay('${ds}',this)"><span class="dn" onclick="event.stopPropagation();selDate='${ds}';openEvModal()" title="탭하여 일정 추가">${d}</span><div class="edots">${dots}</div></div>`;
   }
   const total=Math.ceil((fd+dim)/7)*7;
   for(let d=1;d<=total-fd-dim;d++) h+=`<div class="cal-day other-mo"><span class="dn">${d}</span></div>`;
   document.getElementById('cal-days').innerHTML=h;
 }
+let selDate = null;
 function chMon(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} renderCal(); renderEvList(); }
-function selDay(ds){
+function selDay(ds, el){
   document.querySelectorAll('.cal-day').forEach(c=>c.classList.remove('sel'));
-  event.currentTarget&&event.currentTarget.classList.add('sel');
+  el && el.classList.add('sel');
+  selDate = ds;
   const de=filtEvForPerson().filter(e=>e.date===ds);
   renderEvList(de,ds);
 }
@@ -701,7 +781,10 @@ function renderEvList(items,ds){
 }
 function evHTML(e){
   const sc={완료:'es-done','진행 중':'es-prog','시작 전':'es-todo'};
-  const pc=PERSON_COLOR[e.person]||'#8e8e93';
+  const ps=Array.isArray(e.person)?e.person:[e.person||'전체'];
+  const isAll=ps.includes('전체');
+  const pc=isAll?'#8e8e93':(PERSON_COLOR[ps[0]]||'#8e8e93');
+  const personTags=isAll?'':ps.map(p=>`<span style="color:${PERSON_COLOR[p]||'#8e8e93'};font-weight:600">${x(p)}</span>`).join('<span style="color:var(--mu2)"> · </span>');
   return `<div class="ev-item" onclick="openEvModal('${e.id}')">
     <div class="ev-bar" style="background:${pc}"></div>
     <div class="ev-info">
@@ -709,7 +792,7 @@ function evHTML(e){
       <div class="ev-meta">
         <span>📅 ${fmtD(e.date)}</span>
         ${e.location?`<span>📍 ${x(e.location)}</span>`:''}
-        ${e.person&&e.person!=='전체'?`<span style="color:${pc};font-weight:600">${x(e.person)}</span>`:''}
+        ${personTags?`<span>${personTags}</span>`:''}
       </div>
     </div>
     <div class="ev-status ${sc[e.status]||'es-todo'}">${x(e.status)}</div>
@@ -803,12 +886,14 @@ function renderFilmo(){
     PEOPLE.map(p=>`<button class="filmo-tab${filmoP===p?' active':''}" onclick="setFilmoP('${p}')">${p}</button>`).join('');
   const items=(filmo[filmoP]||[]).sort((a,b)=>(b.year||0)-(a.year||0));
   const c=document.getElementById('filmo-list');
+  const OTT_CLASS={'Netflix':'ott-netflix','Disney+':'ott-disney','Wavve':'ott-wavve','Tving':'ott-tving','Coupang Play':'ott-coupang','Apple TV+':'ott-apple','YouTube':'ott-youtube','극장 개봉':'ott-theater'};
   c.innerHTML=items.length?items.map(f=>`
     <div class="filmo-item" onclick="openFilmoModal('${f.id}')">
       <span class="filmo-year-badge">${f.year||'—'}</span>
       <div class="filmo-title">${x(f.title)}</div>
       <div class="filmo-meta">
         <span class="filmo-type-badge">${x(f.type)}</span>
+        ${f.ott?`<span class="ott-badge ${OTT_CLASS[f.ott]||''}">${x(f.ott)}</span>`:''}
         ${f.role?`<span class="filmo-role">${x(f.role)}</span>`:''}
       </div>
       ${f.notes?`<div class="filmo-notes">${x(f.notes)}</div>`:''}
@@ -831,8 +916,8 @@ function openEvModal(id){
   const e=id?events.find(v=>v.id===id):null;
   document.getElementById('ev-modal-title').textContent=e?'일정 수정':'일정 추가';
   document.getElementById('ev-name').value=e?.name||'';
-  document.getElementById('ev-date').value=e?.date||new Date().toISOString().slice(0,10);
-  document.getElementById('ev-person').value=e?.person||'전체';
+  document.getElementById('ev-date').value=e?.date||(selDate||new Date().toISOString().slice(0,10));
+  setChips(e?.person||'전체');
   document.getElementById('ev-loc').value=e?.location||'';
   document.getElementById('ev-status').value=e?.status||'시작 전';
   document.getElementById('ev-del-btn').style.display=e?'':'none';
@@ -842,7 +927,8 @@ async function saveEv(){
   const name=document.getElementById('ev-name').value.trim();
   const date=document.getElementById('ev-date').value;
   if(!name||!date){toast('제목과 날짜를 입력해주세요');return;}
-  const d={name,date,person:document.getElementById('ev-person').value,
+  const persons=getChipPersons();
+  const d={name,date,person:persons.length===1?persons[0]:persons,
     location:document.getElementById('ev-loc').value.trim(),
     status:document.getElementById('ev-status').value};
   try{
@@ -926,6 +1012,7 @@ function openFilmoModal(id){
   document.getElementById('filmo-year').value=f?.year||new Date().getFullYear();
   document.getElementById('filmo-type').value=f?.type||'단편영화';
   document.getElementById('filmo-role').value=f?.role||'';
+  document.getElementById('filmo-ott').value=f?.ott||'';
   document.getElementById('filmo-notes').value=f?.notes||'';
   document.getElementById('filmo-del-btn').style.display=f?'':'none';
   document.getElementById('filmo-overlay').classList.add('show');
@@ -937,6 +1024,7 @@ async function saveFilmo(){
     year:parseInt(document.getElementById('filmo-year').value)||null,
     type:document.getElementById('filmo-type').value,
     role:document.getElementById('filmo-role').value.trim(),
+    ott:document.getElementById('filmo-ott').value||'',
     notes:document.getElementById('filmo-notes').value.trim()};
   const list=[...(filmo[filmoP]||[])];
   if(editFilmoId){
