@@ -34,16 +34,16 @@ input,select,textarea{font-family:inherit}
 
 /* ── HOME ────────────────────────────────── */
 .home-hero{
-  padding:48px 28px 40px;background:var(--card);
+  padding:72px 28px 60px;background:var(--card);
   text-align:center;border-bottom:1px solid var(--bd);position:relative
 }
 .user-bar{position:absolute;top:14px;right:16px;display:flex;align-items:center;gap:8px}
 .user-photo{width:30px;height:30px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd)}
 .signout-btn{font-size:11px;color:var(--mu);padding:4px 8px;border:1px solid var(--bd);border-radius:7px;background:var(--bg)}
 .signout-btn:hover{color:var(--red);border-color:rgba(255,59,48,.3)}
-.logo-hero{width:76px;height:76px;margin:0 auto 22px;display:block;border-radius:18px;box-shadow:0 4px 16px rgba(0,0,0,.10)}
-.home-title{font-size:30px;font-weight:800;letter-spacing:-.5px;color:var(--tx);margin-bottom:6px}
-.home-sub{font-size:9.5px;letter-spacing:3px;color:var(--mu2);text-transform:uppercase}
+.logo-hero{width:100px;height:100px;margin:0 auto 28px;display:block;border-radius:24px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.home-title{font-size:36px;font-weight:800;letter-spacing:-.5px;color:var(--tx);margin-bottom:8px}
+.home-sub{font-size:10px;letter-spacing:3px;color:var(--mu2);text-transform:uppercase}
 .home-nav{padding:20px 16px 36px;background:var(--bg)}
 .nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .nav-card{
@@ -211,10 +211,6 @@ input,select,textarea{font-family:inherit}
 <!-- ═══ HOME ═══════════════════════════════════════ -->
 <div class="page active" id="pg-home">
   <div class="home-hero">
-    <div class="user-bar">
-      <img id="user-photo" class="user-photo" src="" style="display:none" alt="">
-      <button class="signout-btn" onclick="handleSignOut()">로그아웃</button>
-    </div>
     <svg class="logo-hero" viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
       <rect width="76" height="76" rx="18" fill="#ffffff" stroke="#e5e5ea" stroke-width="1"/>
       <polyline points="14,40 14,13 41,13" fill="none" stroke="#1c1c1e" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"/>
@@ -255,7 +251,7 @@ input,select,textarea{font-family:inherit}
       <div class="nav-card nc-amber" onclick="go('filmography')">
         <div class="nc-dot">🎬</div>
         <div class="nc-title">필모그래피</div>
-        <div class="nc-desc">인물별 작품 목록</div>
+        <div class="nc-desc"></div>
         <span class="nc-link">바로가기 →</span>
       </div>
     </div>
@@ -364,6 +360,7 @@ input,select,textarea{font-family:inherit}
         <option value="전체">전체 (공통 일정)</option>
         <option value="주미르">주미르</option>
         <option value="강영주">강영주</option>
+        <option value="김준석">김준석</option>
         <option value="강지호">강지호</option>
         <option value="정재민">정재민</option>
       </select>
@@ -480,8 +477,8 @@ const db = firebase.firestore();
 // ════════════════════════════════════════
 //  CONSTANTS
 // ════════════════════════════════════════
-const PEOPLE = ['주미르','강영주','강지호','정재민'];
-const PERSON_COLOR = {'전체':'#8e8e93','주미르':'#007aff','강영주':'#34c759','강지호':'#ff9f0a','정재민':'#af52de'};
+const PEOPLE = ['주미르','강영주','김준석','강지호','정재민'];
+const PERSON_COLOR = {'전체':'#8e8e93','주미르':'#007aff','강영주':'#34c759','김준석':'#ff6b35','강지호':'#ff9f0a','정재민':'#af52de'};
 
 const INIT_EV = [
   {id:'kt1', name:'KYJ_별짓_테스트 촬영',   date:'2026-02-24', status:'완료',    person:'전체',  location:''},
@@ -622,7 +619,7 @@ async function seedData(){
 // ════════════════════════════════════════
 //  ROUTING
 // ════════════════════════════════════════
-function go(page){
+function go(page, pushState=true){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('pg-'+page).classList.add('active');
   if(page==='schedule')    renderSched();
@@ -630,7 +627,17 @@ function go(page){
   if(page==='exports')     renderExp();
   if(page==='filmography') renderFilmo();
   window.scrollTo(0,0);
+  if(pushState) history.pushState({page}, '', '#'+page);
 }
+
+// 브라우저 뒤로가기 지원
+window.addEventListener('popstate', e => {
+  const page = e.state?.page || 'home';
+  go(page, false);
+});
+
+// 초기 state 설정
+history.replaceState({page:'home'}, '', '#home');
 
 // ════════════════════════════════════════
 //  SCHEDULE
