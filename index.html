@@ -890,8 +890,6 @@ async function setupListeners(){
   _unsubs.push(db.collection('events').onSnapshot(snap=>{
     events=snap.docs.map(d=>({id:d.id,...d.data()}));
     if(isActive('schedule')) renderSched();
-    // SW가 준비되면 알림 재스케줄
-    scheduleAllNotifs();
   }));
   _unsubs.push(db.collection('equipment').onSnapshot(snap=>{
     equip=snap.docs.map(d=>({id:d.id,...d.data()}));
