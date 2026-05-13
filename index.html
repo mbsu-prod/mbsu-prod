@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MBSU Prod">
 <meta name="theme-color" content="#f5f5f7" id="meta-theme-color">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>MBSU Prod</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -288,6 +291,47 @@ input,select,textarea{font-family:inherit}
 .fbs-done{background:var(--green-d);color:var(--green)}
 .fbs-no{background:var(--red-d);color:var(--red)}
 .fbs-prog{background:var(--blue-d);color:var(--blue)}
+/* ── NOTIFICATION BANNER ────────────────── */
+.notif-banner{
+  margin:0 0 12px;padding:11px 14px;
+  background:rgba(0,122,255,.08);border:1px solid rgba(0,122,255,.2);
+  border-radius:12px;display:flex;align-items:center;gap:10px;
+}
+.notif-banner-ico{font-size:18px;flex-shrink:0}
+.notif-banner-txt{flex:1;font-size:12px;color:var(--tx);line-height:1.4}
+.notif-banner-btn{
+  font-size:11px;font-weight:700;color:#fff;background:var(--blue);
+  padding:6px 12px;border-radius:8px;flex-shrink:0;white-space:nowrap;transition:opacity .15s
+}
+.notif-banner-btn:hover{opacity:.8}
+.notif-banner-x{font-size:16px;color:var(--mu2);padding:2px 4px;flex-shrink:0}
+/* ── TOGGLE SWITCH ──────────────────────── */
+.toggle-wrap{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;background:var(--bg);border:1px solid var(--bd);
+  border-radius:10px;margin-bottom:14px}
+.toggle-label{font-size:13px;color:var(--tx)}
+.toggle-label small{display:block;font-size:10px;color:var(--mu);margin-top:2px}
+.toggle{position:relative;width:44px;height:26px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-track{
+  position:absolute;inset:0;border-radius:13px;
+  background:var(--bd2);transition:background .2s;cursor:pointer
+}
+.toggle input:checked+.toggle-track{background:var(--green)}
+.toggle-thumb{
+  position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;transition:transform .2s;
+  pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.2)
+}
+.toggle input:checked~.toggle-thumb{transform:translateX(18px)}
+/* ── NOTIF TIME ROW ─────────────────────── */
+.notif-time-row{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
+.ntchip{
+  padding:5px 12px;border-radius:16px;border:1px solid var(--bd);
+  background:var(--bg);color:var(--mu);font-size:11px;font-weight:600;
+  transition:all .15s;cursor:pointer
+}
+.ntchip.active{background:var(--blue-d);color:var(--blue);border-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -360,6 +404,7 @@ input,select,textarea{font-family:inherit}
     </div>
   </div>
   <div class="sched-body">
+    <div id="notif-banner"></div>
     <div class="view-tabs" id="sched-view-tabs">
       <button class="vtab active" data-view="month" onclick="setSchedView('month')">이달 일정</button>
       <button class="vtab" data-view="today" onclick="setSchedView('today')">오늘 일정</button>
@@ -469,6 +514,28 @@ input,select,textarea{font-family:inherit}
         <option value="진행 중">진행 중</option>
         <option value="완료">완료</option>
       </select>
+    </div>
+    <!-- 알림 설정 -->
+    <div class="toggle-wrap" id="ev-notif-wrap">
+      <div class="toggle-label">
+        🔔 알림 받기
+        <small>일정 당일 오전 9시에 알림</small>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="ev-notify" onchange="toggleNotifTime()">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="fg" id="ev-notif-time-row" style="display:none">
+      <label class="fl">알림 시각</label>
+      <div class="notif-time-row" id="ev-notif-chips">
+        <button type="button" class="ntchip active" data-min="0" onclick="selNotifChip(this)">당일 09:00</button>
+        <button type="button" class="ntchip" data-min="-1440" onclick="selNotifChip(this)">하루 전 09:00</button>
+        <button type="button" class="ntchip" data-min="-2880" onclick="selNotifChip(this)">이틀 전 09:00</button>
+        <button type="button" class="ntchip" data-min="custom" onclick="selNotifChip(this)">직접 입력</button>
+      </div>
+      <input class="fi" id="ev-notif-custom" type="time" value="09:00" style="margin-top:8px;display:none">
     </div>
     <div class="f-actions">
       <button class="f-del" id="ev-del-btn" onclick="deleteEv()" style="display:none">삭제</button>
@@ -844,6 +911,8 @@ async function setupListeners(){
   _unsubs.push(db.collection('events').onSnapshot(snap=>{
     events=snap.docs.map(d=>({id:d.id,...d.data()}));
     if(isActive('schedule')) renderSched();
+    // SW가 준비되면 알림 재스케줄
+    scheduleAllNotifs();
   }));
   _unsubs.push(db.collection('equipment').onSnapshot(snap=>{
     equip=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -883,12 +952,11 @@ async function seedData(){
 function go(page,pushState=true){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('pg-'+page).classList.add('active');
-  if(page==='schedule') renderSched();
+  if(page==='schedule'){ renderSched(); renderNotifBanner(); }
   if(page==='equipment') renderEq();
   if(page==='exports') renderExp();
   if(page==='filmography') renderFilmo();
   if(page==='feedback') renderFeedback();
-  // sync theme button for feedback page
   syncThemeButtons();
   window.scrollTo(0,0);
   if(pushState) history.pushState({page},'','#'+page);
@@ -1197,6 +1265,14 @@ function openEvModal(id){
   document.getElementById('ev-loc').value=e?.location||'';
   document.getElementById('ev-status').value=e?.status||'시작 전';
   document.getElementById('ev-del-btn').style.display=e?'':'none';
+  // 알림 설정 UI
+  const notifWrap=document.getElementById('ev-notif-wrap');
+  if(Notification.permission==='denied'){
+    notifWrap.style.opacity='.4'; notifWrap.style.pointerEvents='none';
+  } else {
+    notifWrap.style.opacity=''; notifWrap.style.pointerEvents='';
+  }
+  setEvNotifyUI(e);
   document.getElementById('ev-overlay').classList.add('show');
 }
 
@@ -1212,6 +1288,7 @@ function copyEv(id){
   document.getElementById('ev-loc').value=e.location||'';
   document.getElementById('ev-status').value='시작 전';
   document.getElementById('ev-del-btn').style.display='none';
+  setEvNotifyUI(null);
   document.getElementById('ev-overlay').classList.add('show');
 }
 
@@ -1220,17 +1297,41 @@ async function saveEv(){
   const date=document.getElementById('ev-date').value;
   if(!name||!date){toast('제목과 날짜를 입력해주세요');return;}
   const persons=getChipPersons();
+  const nd=getEvNotifyData(date);
   const d={name,date,person:persons.length===1?persons[0]:persons,
     location:document.getElementById('ev-loc').value.trim(),
-    status:document.getElementById('ev-status').value};
+    status:document.getElementById('ev-status').value,
+    notify:nd.notify, notifyAt:nd.notifyAt||null};
   try{
-    if(editEvId){await db.collection('events').doc(editEvId).update(d);}
-    else{await db.collection('events').add(d);}
-    closeAll(); toast('✅ 저장됐습니다');
+    let savedId;
+    if(editEvId){
+      await db.collection('events').doc(editEvId).update(d);
+      savedId=editEvId;
+      if(!nd.notify) sendToSW('CANCEL',{id:editEvId});
+    } else {
+      const ref=await db.collection('events').add(d);
+      savedId=ref.id;
+    }
+    if(nd.notify&&nd.notifyAt){
+      if(Notification.permission==='granted'){
+        scheduleNotif({id:savedId,...d});
+        toast('✅ 저장됐습니다 · 알림 예약됨 🔔');
+      } else {
+        // 권한 요청
+        Notification.requestPermission().then(p=>{
+          if(p==='granted') scheduleNotif({id:savedId,...d});
+        });
+        toast('✅ 저장됐습니다');
+      }
+    } else {
+      toast('✅ 저장됐습니다');
+    }
+    closeAll();
   }catch(e){toast('오류: '+e.message);}
 }
 async function deleteEv(){
   if(!editEvId||!confirm('삭제하시겠습니까?'))return;
+  sendToSW('CANCEL',{id:editEvId});
   await db.collection('events').doc(editEvId).delete();
   closeAll(); toast('삭제됐습니다');
 }
@@ -1334,6 +1435,138 @@ async function deleteFilmo(){
   const list=(filmo[filmoP]||[]).filter(f=>f.id!==editFilmoId);
   await db.collection('filmography').doc(filmoP).set({films:list});
   closeAll(); toast('삭제됐습니다');
+}
+
+// ════════════════════════════════════════
+//  PWA — SERVICE WORKER 등록
+// ════════════════════════════════════════
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {scope:'./'})
+      .then(reg => {
+        console.log('[SW] registered', reg.scope);
+        window._swReg = reg;
+      })
+      .catch(err => console.warn('[SW] register failed', err));
+  });
+}
+
+// ════════════════════════════════════════
+//  🔔 NOTIFICATION SYSTEM
+// ════════════════════════════════════════
+const NOTIF_KEY = 'mbsu-notif-scheduled'; // localStorage key
+
+// 배너 렌더링
+function renderNotifBanner(){
+  const el = document.getElementById('notif-banner');
+  if(!el) return;
+  const perm = Notification.permission;
+  if(perm === 'granted'){
+    el.innerHTML='';
+    return;
+  }
+  if(perm === 'denied'){
+    el.innerHTML=`<div class="notif-banner">
+      <span class="notif-banner-ico">🔕</span>
+      <span class="notif-banner-txt">알림이 차단되어 있습니다.<br>브라우저 설정에서 허용해 주세요.</span>
+      <button class="notif-banner-x" onclick="this.closest('.notif-banner').remove()">✕</button>
+    </div>`;
+    return;
+  }
+  // default — 허용 요청 배너
+  el.innerHTML=`<div class="notif-banner">
+    <span class="notif-banner-ico">🔔</span>
+    <span class="notif-banner-txt"><strong>일정 알림 받기</strong><br>촬영 일정 전에 알림을 받을 수 있어요.</span>
+    <button class="notif-banner-btn" onclick="requestNotifPerm()">허용</button>
+    <button class="notif-banner-x" onclick="dismissNotifBanner()">✕</button>
+  </div>`;
+}
+
+function dismissNotifBanner(){
+  localStorage.setItem('mbsu-notif-dismissed','1');
+  const el=document.getElementById('notif-banner');
+  if(el) el.innerHTML='';
+}
+
+async function requestNotifPerm(){
+  const result = await Notification.requestPermission();
+  renderNotifBanner();
+  if(result === 'granted'){
+    toast('✅ 알림이 허용됐습니다');
+    // 기존 저장된 일정들 다시 스케줄
+    scheduleAllNotifs();
+  }
+}
+
+// 알림 모달 UI 컨트롤
+function toggleNotifTime(){
+  const on = document.getElementById('ev-notify').checked;
+  document.getElementById('ev-notif-time-row').style.display = on ? '' : 'none';
+}
+function selNotifChip(btn){
+  document.querySelectorAll('#ev-notif-chips .ntchip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  const custom = document.getElementById('ev-notif-custom');
+  custom.style.display = btn.dataset.min === 'custom' ? '' : 'none';
+}
+
+// 알림 fire 시각 계산 (epoch ms)
+function calcNotifTime(dateStr){
+  const chip = document.querySelector('#ev-notif-chips .ntchip.active');
+  if(!chip) return null;
+  const base = new Date(dateStr+'T09:00:00');
+  if(chip.dataset.min === 'custom'){
+    const t = document.getElementById('ev-notif-custom').value || '09:00';
+    const [hh,mm] = t.split(':').map(Number);
+    base.setHours(hh,mm,0,0);
+    return base.getTime();
+  }
+  const offset = parseInt(chip.dataset.min) || 0; // minutes
+  return base.getTime() + offset * 60000;
+}
+
+// 서비스 워커에 알림 예약 메시지 전송
+function sendToSW(type, payload){
+  if(!navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage({type, ...payload});
+}
+
+// 단일 이벤트 알림 스케줄
+function scheduleNotif(ev){
+  if(!ev.notify || !ev.notifyAt || Notification.permission !== 'granted') return;
+  const delay = ev.notifyAt - Date.now();
+  if(delay < 0) return; // 지난 시각
+  sendToSW('SCHEDULE', {
+    id: ev.id,
+    title: `📅 ${ev.name}`,
+    body: [ev.location ? '📍'+ev.location : '', ev.date ? fmtD(ev.date) : ''].filter(Boolean).join('  '),
+    fireAt: ev.notifyAt
+  });
+}
+
+// 전체 이벤트 일괄 스케줄
+function scheduleAllNotifs(){
+  if(Notification.permission !== 'granted') return;
+  events.filter(e => e.notify && e.notifyAt).forEach(scheduleNotif);
+}
+
+// ── 모달 open/save에서 사용 ───────────────
+function getEvNotifyData(dateStr){
+  const on = document.getElementById('ev-notify').checked;
+  if(!on) return {notify:false, notifyAt:null};
+  const at = calcNotifTime(dateStr);
+  return {notify:true, notifyAt:at};
+}
+function setEvNotifyUI(ev){
+  const cb = document.getElementById('ev-notify');
+  cb.checked = !!ev?.notify;
+  toggleNotifTime();
+  // chip 복원
+  if(ev?.notifyAt){
+    const chips = document.querySelectorAll('#ev-notif-chips .ntchip');
+    chips.forEach(c=>c.classList.remove('active'));
+    chips[0].classList.add('active'); // default 당일
+  }
 }
 
 // ════════════════════════════════════════
