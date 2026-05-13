@@ -1,9 +1,10 @@
 name: Deploy Firebase Functions
 
 on:
-   workflow_dispatch:
+  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - 'functions/**'
       - 'firebase.json'
