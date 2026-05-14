@@ -1570,8 +1570,8 @@ if('serviceWorker' in navigator){
       // FCM 초기화
       initFCM(swReg);
 
-      // 이미 권한이 있으면 바로 토큰 등록
-      if(Notification.permission === 'granted'){
+      // 이미 권한이 있고, 사용자가 알림을 끄지 않은 경우에만 토큰 등록
+      if(Notification.permission === 'granted' && !localStorage.getItem('mbsu-notif-off')){
         await registerFCMToken(swReg);
       }
 
