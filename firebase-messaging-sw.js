@@ -1,32 +1,55 @@
 // ════════════════════════════════════════
 //  MBSU Prod — Unified Service Worker
-//  PWA 캐싱 + FCM 백그라운드 푸시 수신
-//  (firebase-messaging-sw.js 이름 유지 필수)
+//  PWA 캐싱 + FCM 푸시 수신
 // ════════════════════════════════════════
 
-importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
+// ── FCM 백그라운드 푸시 수신 ──────────────
+// Firebase SDK 없이 브라우저 기본 push 이벤트로 직접 처리
+// → SDK가 push를 가로채는 문제 없이 안정적으로 동작
+self.addEventListener('push', event => {
+  if (!event.data) return;
 
-// ── Firebase 초기화 ───────────────────────
-firebase.initializeApp({
-  apiKey:            "AIzaSyCi6trZA-DI3z2hLvUgshTcYMaLWNxo4b4",
-  authDomain:        "mbsu-prod.firebaseapp.com",
-  projectId:         "mbsu-prod",
-  storageBucket:     "mbsu-prod.firebasestorage.app",
-  messagingSenderId: "899152711355",
-  appId:             "1:899152711355:web:c94ff0b41f4b2810c1639e"
+  let payload;
+  try { payload = event.data.json(); } catch(e) { return; }
+
+  // webpush.notification 또는 data 필드에서 제목/내용 추출
+  const n = (payload.notification) || {};
+  const d = payload.data || {};
+  const title   = n.title   || d.title   || 'MBSU Prod';
+  const body    = n.body    || d.body    || '';
+  const eventId = d.eventId || '';
+
+  event.waitUntil(
+    // 포그라운드 탭이 있으면 OS 알림 생략 (앱 내 토스트로 처리)
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(clients => {
+        const hasFocus = clients.some(c => c.visibilityState === 'visible');
+        if (hasFocus) return;
+        return self.registration.showNotification(title, {
+          body,
+          icon:    './icon-192.png',
+          badge:   './icon-192.png',
+          tag:     eventId ? 'mbsu-' + eventId : 'mbsu-update',
+          data:    d,
+          vibrate: [200, 100, 200]
+        });
+      })
+  );
 });
 
-const messaging = firebase.messaging();
-
-// ── 백그라운드 알림 ────────────────────────
-// webpush.notification 필드를 사용하므로
-// 브라우저가 자동으로 1번만 표시 → onBackgroundMessage 불필요
-// (등록하면 중복 발생하므로 제거)
+// ── 알림 클릭 → 앱 열기 ──────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      if (clients.length) return clients[0].focus();
+      return self.clients.openWindow('./');
+    })
+  );
+});
 
 // ── PWA 캐시 ─────────────────────────────
-// ※ push 이벤트 리스너 없음 — Firebase SDK(onBackgroundMessage)가 처리
-const CACHE = 'mbsu-v3';
+const CACHE = 'mbsu-v4';
 const SHELL = ['./', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -45,7 +68,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  // Firebase / external APIs: 네트워크만 사용
   if (e.request.url.includes('firestore') ||
       e.request.url.includes('googleapis') ||
       e.request.url.includes('gstatic') ||
@@ -58,17 +80,6 @@ self.addEventListener('fetch', e => {
         return res;
       })
       .catch(() => caches.match(e.request))
-  );
-});
-
-// ── 알림 클릭 → 앱 포커스 또는 열기 ─────
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cls => {
-      if (cls.length) return cls[0].focus();
-      return self.clients.openWindow('./');
-    })
   );
 });
 
