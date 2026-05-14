@@ -1260,10 +1260,15 @@ function copyEv(id){
   document.getElementById('ev-overlay').classList.add('show');
 }
 
+let _savingEv = false;
 async function saveEv(){
+  if(_savingEv) return;
   const name=document.getElementById('ev-name').value.trim();
   const date=document.getElementById('ev-date').value;
   if(!name||!date){toast('제목과 날짜를 입력해주세요');return;}
+  _savingEv = true;
+  const btn = document.querySelector('#ev-overlay .f-save');
+  if(btn) btn.disabled = true;
   const persons=getChipPersons();
   const d={name,date,person:persons.length===1?persons[0]:persons,
     location:document.getElementById('ev-loc').value.trim(),
@@ -1279,18 +1284,31 @@ async function saveEv(){
     toast('✅ 저장됐습니다');
     closeAll();
   }catch(e){toast('오류: '+e.message);}
+  finally{
+    _savingEv = false;
+    if(btn) btn.disabled = false;
+  }
 }
+let _deletingEv = false;
 async function deleteEv(){
-  if(!editEvId||!confirm('삭제하시겠습니까?'))return;
-  const ev=events.find(v=>v.id===editEvId);
-  await db.collection('events').doc(editEvId).delete();
-  notifyWorker('🗑 일정 삭제됨', ev?.name||'일정', 'event_delete', editEvId);
-  closeAll(); toast('삭제됐습니다');
+  if(_deletingEv||!editEvId||!confirm('삭제하시겠습니까?'))return;
+  _deletingEv = true;
+  try{
+    const ev=events.find(v=>v.id===editEvId);
+    await db.collection('events').doc(editEvId).delete();
+    notifyWorker('🗑 일정 삭제됨', ev?.name||'일정', 'event_delete', editEvId);
+    closeAll(); toast('삭제됐습니다');
+  }finally{ _deletingEv = false; }
 }
 
 // ── Cloudflare Worker 알림 호출 ──────────
 const WORKER_URL = 'https://mbsu-notif.jjm3570.workers.dev';
+const _notifSent = new Map(); // dedup: 같은 eventId+type 3초 이내 중복 차단
 function notifyWorker(title, body, type, eventId){
+  const key = `${type}:${eventId||title}`;
+  const now = Date.now();
+  if (_notifSent.has(key) && now - _notifSent.get(key) < 3000) return;
+  _notifSent.set(key, now);
   fetch(WORKER_URL, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
