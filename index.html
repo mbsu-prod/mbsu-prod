@@ -198,6 +198,8 @@ input,select,textarea{font-family:inherit}
 .eq-owner-tag{background:var(--bd);color:var(--mu);font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
 .eq-row-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .eq-qty-badge{font-size:11px;font-weight:700;color:var(--tx);background:var(--bg);border:1px solid var(--bd);padding:2px 9px;border-radius:7px;white-space:nowrap}
+.eq-export-badge{font-size:10px;font-weight:700;color:#fff;background:var(--amber);padding:2px 8px;border-radius:7px;white-space:nowrap}
+.exp-owner{font-size:11px;color:var(--mu);margin-top:2px}
 .filmo-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--bd);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:0}
 .filmo-tabs::-webkit-scrollbar{display:none}
 .filmo-tab{padding:12px 20px;font-size:13px;font-weight:600;color:var(--mu);white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s;flex-shrink:0}
@@ -595,7 +597,8 @@ input,select,textarea{font-family:inherit}
       <span class="modal-title">반출 추가</span>
       <button class="modal-x" onclick="closeAll()">✕</button>
     </div>
-    <div class="fg"><label class="fl">장비명</label><input class="fi" id="exp-equip" type="text" placeholder="장비명"></div>
+    <div class="fg"><label class="fl">장비명</label><input class="fi" id="exp-equip" type="text" placeholder="장비명" list="eq-names-list" autocomplete="off"></div>
+    <datalist id="eq-names-list"></datalist>
     <div class="fg"><label class="fl">반출 날짜</label><input class="fi" id="exp-date" type="date"></div>
     <div class="fg"><label class="fl">반출처 / 프로덕션</label><input class="fi" id="exp-dest" type="text" placeholder="지불아, 별짓..."></div>
     <div class="fg"><label class="fl">수량</label><input class="fi" id="exp-qty" type="number" placeholder="수량"></div>
@@ -835,33 +838,52 @@ const INIT_EV = [
   {id:'j67', name:'지불아_67회차_파주_크업', date:'2026-05-12', status:'진행 중', person:'주미르',location:'파주'},
 ];
 const INIT_EQ = [
-  {id:'l1', name:'Blazer Mantis',     company:'',          types:['Lens'],    qty:null,notes:'',    owner:''},
-  {id:'l2', name:'Leitz Hektor',      company:'',          types:['Lens'],    qty:null,notes:'',    owner:''},
-  {id:'s1', name:'C-Stand',           company:'Bennu',     types:['Stand'],   qty:4,   notes:'',    owner:''},
-  {id:'g1', name:'7수 광목',          company:'',          types:['Grip'],    qty:null,notes:'',    owner:''},
-  {id:'g2', name:'5수 블랙',          company:'',          types:['Grip'],    qty:null,notes:'',    owner:''},
-  {id:'g3', name:'2inch Clamp',       company:'',          types:['Grip'],    qty:null,notes:'',    owner:''},
-  {id:'g4', name:'Japan soft vinyl',  company:'',          types:['Grip'],    qty:null,notes:'',    owner:''},
-  {id:'f1', name:'Diffusion Full',    company:'',          types:['Filter'],  qty:null,notes:'',    owner:''},
-  {id:'f2', name:'CTB 1/4',           company:'',          types:['Filter'],  qty:null,notes:'',    owner:''},
-  {id:'f3', name:'CTB 1/2',           company:'',          types:['Filter'],  qty:null,notes:'',    owner:''},
-  {id:'tc1',name:'NEXT-704TC',        company:'',          types:['TC'],      qty:null,notes:'',    owner:''},
-  {id:'io1',name:'Interface',         company:'',          types:['I/O'],     qty:null,notes:'',    owner:''},
-  {id:'w1', name:'Xtalk X9',          company:'',          types:['Wireless'],qty:null,notes:'',    owner:''},
-  {id:'ln1',name:'HDMI 2.1 8K',       company:'MachLink',  types:['Line'],    qty:2,   notes:'HDMI 2.1 / 1.2M', owner:''},
-  {id:'ln2',name:'NX-BNC005 (NX371)', company:'NEXI',      types:['Line'],    qty:1,   notes:'BNC / 0.5M',      owner:''},
-  {id:'ln3',name:'NX-BNC015 (NX373)', company:'NEXI',      types:['Line'],    qty:1,   notes:'BNC / 1.5M',      owner:''},
-  {id:'ln4',name:'NX-BNC100 (NX377)', company:'NEXI',      types:['Line'],    qty:1,   notes:'BNC / 10M',       owner:''},
-  {id:'ln5',name:'MHL',               company:'',          types:['Line'],    qty:null,notes:'',    owner:''},
-  {id:'a1', name:'Single holder',     company:'',          types:['ACC'],     qty:null,notes:'',    owner:''},
-  {id:'a2', name:'Hash',              company:'',          types:['ACC'],     qty:null,notes:'',    owner:''},
-  {id:'a3', name:'1674',              company:'',          types:['ACC'],     qty:null,notes:'',    owner:''},
-  {id:'a4', name:'1052',              company:'',          types:['ACC'],     qty:null,notes:'',    owner:''},
-  {id:'a5', name:'B7C',               company:'',          types:['ACC'],     qty:null,notes:'',    owner:''},
-  {id:'c1', name:'Seltos',            company:'Kia',       types:['Car'],     qty:1,   notes:'',    owner:''},
-  {id:'c2', name:'Avante',            company:'Hyundai',   types:['Car'],     qty:1,   notes:'9964',owner:''},
-  {id:'c3', name:'Impala',            company:'Chevrolet', types:['Car'],     qty:1,   notes:'16가6043',owner:''},
-  {id:'c4', name:'Poter II supercap', company:'Hyundai',   types:['Car'],     qty:1,   notes:'',    owner:''},
+  {id:'eq1', name:'HDMI 2.1 8K',              company:'MachLink',         types:['Line'],             qty:2,    notes:'HDMI 2.1 / 1.2M',       owner:'강영주'},
+  {id:'eq2', name:'NX-BNC005 (NX371)',         company:'NEXI',             types:['Line'],             qty:1,    notes:'BNC / 0.5M',             owner:'강영주'},
+  {id:'eq3', name:'NX-BNC015 (NX373)',         company:'NEXI',             types:['Line'],             qty:1,    notes:'BNC / 1.5M',             owner:'강영주'},
+  {id:'eq4', name:'NX-BNC100 (NX377)',         company:'NEXI',             types:['Line'],             qty:1,    notes:'BNC / 10M',              owner:'강영주'},
+  {id:'eq5', name:'Thunderbolt 5 Cable',       company:'BLAZE',            types:['Line'],             qty:1,    notes:'Thunderbolt 5 / 1.2M',   owner:'강영주'},
+  {id:'eq6', name:'Komodo 6K',                 company:'Tentacle',         types:['Line','TC'],        qty:1,    notes:'Timecode Cable / 30cm',  owner:'강영주'},
+  {id:'eq7', name:'Komodo X',                  company:'Tentacle',         types:['Line','TC'],        qty:1,    notes:'Timecode Cable / 30cm',  owner:'강영주'},
+  {id:'eq8', name:'HDMI 2.1 8K',              company:'Codeway',           types:['Line'],             qty:1,    notes:'HDMI 2.1 / 1.5M',        owner:'강지호'},
+  {id:'eq9', name:'Jib-AL2120',               company:'Nitze',             types:['Grip'],             qty:1,    notes:'Minijib',                owner:'주미르'},
+  {id:'eq10',name:'VDSLR 35mm',               company:'Samyang',           types:['Lens'],             qty:1,    notes:'',                       owner:'강영주'},
+  {id:'eq11',name:'CL800e',                   company:'Cineloid',          types:['Light'],            qty:2,    notes:'',                       owner:'주미르'},
+  {id:'eq12',name:'LS 300X',                  company:'Aputure',           types:['Light'],            qty:2,    notes:'Fresenel F10, Reflecter X',owner:'김준석'},
+  {id:'eq13',name:'B7C',                      company:'Aputure',           types:['Light'],            qty:1,    notes:'',                       owner:'김준석'},
+  {id:'eq14',name:'Pavotube 15C II',          company:'Nanlite',           types:['Light'],            qty:2,    notes:'',                       owner:'주미르'},
+  {id:'eq15',name:'IronWolf Pro 12TB NAS HDD',company:'Seagate',           types:['HDD','Storage'],    qty:4,    notes:'',                       owner:'주미르, 강영주'},
+  {id:'eq16',name:'NEXT-704TC',               company:'NEXTU',             types:['Storage'],          qty:1,    notes:'',                       owner:'강영주'},
+  {id:'eq17',name:'Mac Mini M4',              company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강영주, 주미르'},
+  {id:'eq18',name:'Macbook Pro 16" M2 Pro',   company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강영주'},
+  {id:'eq19',name:'Lexar Silver 160GB',        company:'Lexar',             types:['Memory Card'],      qty:2,    notes:'CF-Express Type A',      owner:'강영주'},
+  {id:'eq20',name:'Cine Eye 2',               company:'Accsoon',           types:['Wireless'],         qty:1,    notes:'Transmission',           owner:'강영주'},
+  {id:'eq21',name:'Ultra Studio Recorder 3G', company:'Blackmagic Design', types:['I/O'],              qty:1,    notes:'',                       owner:'강영주'},
+  {id:'eq22',name:'Sync E',                   company:'Tentacle',          types:['Recorder','TC'],    qty:1,    notes:'Timecode Generator',     owner:'김준석'},
+  {id:'eq23',name:'Xtalk X9',                 company:'Synco',             types:['Grip'],             qty:9,    notes:'인터컴',                  owner:'강지호'},
+  {id:'eq24',name:'MacBook 16 M4 pro',        company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강지호'},
+  {id:'eq25',name:'Spyder CHECKR 24',          company:'DataColor',         types:['ACC'],              qty:1,    notes:'Color Chart',             owner:'강영주'},
+  {id:'eq26',name:'CTB 1/4',                  company:'LEE Filter',        types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq27',name:'CTB 1/2',                  company:'LEE Filter',        types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq28',name:'2inch Clamp',              company:'PONY',              types:['ACC','Light'],       qty:6,    notes:'',                       owner:'주미르'},
+  {id:'eq29',name:'C-Stand',                  company:'Bennu',             types:['Stand'],            qty:4,    notes:'C-stand',                owner:'주미르'},
+  {id:'eq30',name:'Single holder',            company:'KUPO',              types:['Grip'],             qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq31',name:'Japan soft vinyl',         company:'LEE Filter',        types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq32',name:'Diffusion Full',           company:'LEE Filter',        types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq33',name:'Poter II supercap',        company:'Hyundai',           types:['Car'],              qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq34',name:'Impala',                   company:'Chevrolet',         types:['Car'],              qty:null, notes:'16가6043',               owner:'강영주'},
+  {id:'eq35',name:'Seltos',                   company:'Kia',               types:['Car'],              qty:null, notes:'',                       owner:'김준석'},
+  {id:'eq36',name:'Avante',                   company:'Hyundai',           types:['Car'],              qty:null, notes:'9964',                   owner:'강지호'},
+  {id:'eq37',name:'60W crypton light',        company:'City light',        types:['Light'],            qty:4,    notes:'',                       owner:'주미르'},
+  {id:'eq38',name:'MB-T15',                   company:'Tilta',             types:['ACC','Camera'],     qty:1,    notes:'Matte-Box',              owner:'강영주'},
+  {id:'eq39',name:'1052',                     company:'SmallRig',          types:['ACC','Camera'],     qty:1,    notes:'30mm Road',              owner:'강영주'},
+  {id:'eq40',name:'2092B',                    company:'SmallRig',          types:['ACC','Camera'],     qty:1,    notes:'BasePlate',              owner:'강영주'},
+  {id:'eq41',name:'1674',                     company:'SmallRig',          types:['ACC','Camera'],     qty:1,    notes:'BasePlate',              owner:'강영주'},
+  {id:'eq42',name:'3010B',                    company:'SmallRig',          types:['ACC','Camera'],     qty:1,    notes:'FollowFocus',            owner:'강영주'},
+  {id:'eq43',name:'7수 광목',                 company:'',                  types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq44',name:'5수 블랙',                 company:'',                  types:['Filter','Light'],   qty:null, notes:'',                       owner:'주미르'},
+  {id:'eq45',name:'Foly Form board 2x1m',     company:'',                  types:['ACC','Light'],      qty:1,    notes:'Reflecter',              owner:'주미르'},
+  {id:'eq46',name:'26mm socket',              company:'',                  types:['Light','Line'],     qty:null, notes:'',                       owner:'주미르'},
 ];
 
 let events=[], equip=[], exports_=[], filmo={}, feedbacks=[];
@@ -1279,6 +1301,8 @@ function eqRow(e){
   const g=eqGroup(e.types?.[0]||'Camera');
   const subParts=[e.company,e.notes].filter(Boolean);
   const typeLabel=e.types?.[0]||'';
+  // 반출중 여부: exports_ 중 equipId가 일치하는 항목 존재하면 반출중
+  const activeExp=exports_.find(ex=>ex.equipId===e.id);
   return `<div class="eq-row" style="--rclr:${g.color}" onclick="openEqModal('${e.id}')">
     <div class="eq-ico-wrap" style="background:${g.color}18">${g.ico}</div>
     <div class="eq-row-body">
@@ -1289,6 +1313,7 @@ function eqRow(e){
       </div>
     </div>
     <div class="eq-row-right">
+      ${activeExp?`<div class="eq-export-badge">반출중</div>`:''}
       ${e.qty!=null?`<div class="eq-qty-badge">${e.qty}개</div>`:''}
     </div>
   </div>`;
@@ -1301,15 +1326,24 @@ function setEqF(t){ eqF=t; renderEq(); }
 function renderExp(){
   document.getElementById('exp-count').textContent=`${exports_.length}건`;
   const c=document.getElementById('exp-list');
-  c.innerHTML=exports_.length?exports_.map(e=>`
-    <div class="ev-item">
-      <div class="ev-bar" style="background:var(--blue)"></div>
+  c.innerHTML=exports_.length?exports_.map(e=>{
+    // equipId로 장비 소유자 조회 (연동)
+    const eqItem=e.equipId?equip.find(q=>q.id===e.equipId):null;
+    const ownerStr=eqItem?.owner||'';
+    return `<div class="ev-item">
+      <div class="ev-bar" style="background:var(--amber)"></div>
       <div class="ev-info">
         <div class="ev-name">${x(e.equip)}</div>
-        <div class="ev-meta"><span>📅 ${fmtD(e.date)}</span>${e.dest?`<span>→ ${x(e.dest)}</span>`:''} ${e.qty?`<span>${e.qty}개</span>`:''}</div>
+        <div class="ev-meta">
+          ${e.dest?`<span>📁 ${x(e.dest)}</span>`:''}
+          ${e.date?`<span>📅 ${fmtD(e.date)}</span>`:''}
+          ${e.qty?`<span>${e.qty}개</span>`:''}
+        </div>
+        ${ownerStr?`<div class="exp-owner">👤 ${x(ownerStr)}</div>`:''}
       </div>
       <button class="del-btn" onclick="event.stopPropagation();delExp('${e.id}')">삭제</button>
-    </div>`).join(''):'<div class="empty">반출 내역이 없습니다</div>';
+    </div>`;
+  }).join(''):'<div class="empty">반출 내역이 없습니다</div>';
 }
 
 // ════════════════════════════════════════
@@ -1541,13 +1575,19 @@ function openExpModal(){
   document.getElementById('exp-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('exp-dest').value='';
   document.getElementById('exp-qty').value='';
+  // 장비명 자동완성 목록 갱신
+  const dl=document.getElementById('eq-names-list');
+  dl.innerHTML=equip.map(q=>`<option value="${x(q.name)}">`).join('');
   document.getElementById('exp-overlay').classList.add('show');
 }
 async function saveExp(){
   const eq=document.getElementById('exp-equip').value.trim();
   if(!eq){toast('장비명을 입력해주세요');return;}
+  const matched=equip.find(q=>q.name.toLowerCase()===eq.toLowerCase());
+  const equipId=matched?.id||null;
   await db.collection('exports').add({
     equip:eq,
+    equipId:equipId,
     date:document.getElementById('exp-date').value,
     dest:document.getElementById('exp-dest').value.trim(),
     qty:document.getElementById('exp-qty').value||null
