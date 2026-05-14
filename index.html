@@ -594,6 +594,7 @@ input,select,textarea{font-family:inherit}
             <button type="button" class="plchip" data-pl="MBC"  style="--pl:#0c4ca3" onclick="togglePlChip(this)">MBC</button>
             <button type="button" class="plchip" data-pl="tvN"  style="--pl:#e60000" onclick="togglePlChip(this)">tvN</button>
             <button type="button" class="plchip" data-pl="JTBC" style="--pl:#e60067" onclick="togglePlChip(this)">JTBC</button>
+            <button type="button" class="plchip" data-pl="ENA"  style="--pl:#00a650" onclick="togglePlChip(this)">ENA</button>
           </div>
         </div>
         <div class="plat-section">
@@ -1007,7 +1008,7 @@ function renderCal(){
     const de=byD[ds]||[];
     const it=today.getFullYear()===calY&&today.getMonth()===calM&&today.getDate()===d;
     const dots=de.slice(0,4).map(e=>{const ps=Array.isArray(e.person)?e.person:[e.person];return`<span class="edot" style="background:${PERSON_COLOR[ps[0]]||'#8e8e93'}"></span>`;}).join('');
-    h+=`<div class="cal-day${it?' today':''}${selDate===ds?' sel':''}" onclick="selDay('${ds}',this)"><span class="dn" onclick="event.stopPropagation();selDate='${ds}';openEvModal()" title="탭하여 일정 추가">${d}</span><div class="edots">${dots}</div></div>`;
+    h+=`<div class="cal-day${it?' today':''}${selDate===ds?' sel':''}" onclick="selDay('${ds}',this)"><span class="dn">${d}</span><div class="edots">${dots}</div></div>`;
   }
   const total=Math.ceil((fd+dim)/7)*7;
   for(let d=1;d<=total-fd-dim;d++) h+=`<div class="cal-day other-mo"><span class="dn">${d}</span></div>`;
