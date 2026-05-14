@@ -24,12 +24,25 @@ const messaging = firebase.messaging();
 //
 // 포그라운드는 main app의 onMessage에서 토스트로 처리
 
-// ── 알림 클릭 → 앱 열기 ──────────────────
+// ── 알림 클릭 → 앱 열기 + 히스토리 저장 ──
 self.addEventListener('notificationclick', event => {
-  event.notification.close();
+  const notif = event.notification;
+  const data = notif.data || {};
+  // title/body는 notification 객체에서 가져옴 (data 필드에 없음)
+  const payload = {
+    title:   notif.title || data.title || 'MBSU Prod',
+    body:    notif.body  || data.body  || '',
+    eventId: data.eventId || '',
+    type:    data.type   || ''
+  };
+  notif.close();
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      if (clients.length) return clients[0].focus();
+      const target = clients.length ? clients[0] : null;
+      if (target) {
+        target.postMessage({ type: 'NOTIF_CLICKED', data: payload });
+        return target.focus();
+      }
       return self.clients.openWindow('./');
     })
   );
