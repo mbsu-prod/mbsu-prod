@@ -198,6 +198,8 @@ input,select,textarea{font-family:inherit}
 .eq-owner-tag{background:var(--bd);color:var(--mu);font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
 .eq-row-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .eq-qty-badge{font-size:11px;font-weight:700;color:var(--tx);background:var(--bg);border:1px solid var(--bd);padding:2px 9px;border-radius:7px;white-space:nowrap}
+.eq-price-tag{font-size:10px;color:var(--green);font-weight:600;margin-top:2px}
+.eq-buydate-tag{font-size:10px;color:var(--mu);margin-top:1px}
 .eq-export-badge{font-size:10px;font-weight:700;color:#fff;background:var(--amber);padding:2px 8px;border-radius:7px;white-space:nowrap}
 .exp-owner{font-size:11px;color:var(--mu);margin-top:2px}
 .filmo-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--bd);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:0}
@@ -583,6 +585,8 @@ input,select,textarea{font-family:inherit}
       </select>
     </div>
     <div class="fg"><label class="fl">수량</label><input class="fi" id="eq-qty" type="number" placeholder="수량 (선택)"></div>
+    <div class="fg"><label class="fl">구매 날짜</label><input class="fi" id="eq-buydate" type="date"></div>
+    <div class="fg"><label class="fl">금액 (원)</label><input class="fi" id="eq-price" type="number" placeholder="금액 (선택)"></div>
     <div class="fg"><label class="fl">메모</label><input class="fi" id="eq-notes" type="text" placeholder="메모 (선택)"></div>
     <div class="f-actions">
       <button class="f-del" id="eq-del-btn" onclick="deleteEq()" style="display:none">삭제</button>
@@ -852,11 +856,11 @@ const INIT_EQ = [
   {id:'eq12',name:'LS 300X',                  company:'Aputure',           types:['Light'],            qty:2,    notes:'Fresenel F10, Reflecter X',owner:'김준석'},
   {id:'eq13',name:'B7C',                      company:'Aputure',           types:['Light'],            qty:1,    notes:'',                       owner:'김준석'},
   {id:'eq14',name:'Pavotube 15C II',          company:'Nanlite',           types:['Light'],            qty:2,    notes:'',                       owner:'주미르'},
-  {id:'eq15',name:'IronWolf Pro 12TB NAS HDD',company:'Seagate',           types:['HDD','Storage'],    qty:4,    notes:'',                       owner:'주미르, 강영주'},
+  {id:'eq15',name:'IronWolf Pro 12TB NAS HDD',company:'Seagate',           types:['HDD','Storage'],    qty:4,    notes:'',                       owner:'주미르, 강영주', buydate:'2025-06-10', price:216930},
   {id:'eq16',name:'NEXT-704TC',               company:'NEXTU',             types:['Storage'],          qty:1,    notes:'',                       owner:'강영주'},
-  {id:'eq17',name:'Mac Mini M4',              company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강영주, 주미르'},
+  {id:'eq17',name:'Mac Mini M4',              company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강영주, 주미르', buydate:'2025-09-10', price:2093640},
   {id:'eq18',name:'Macbook Pro 16" M2 Pro',   company:'Apple',             types:['Mac OS'],           qty:1,    notes:'',                       owner:'강영주'},
-  {id:'eq19',name:'Lexar Silver 160GB',        company:'Lexar',             types:['Memory Card'],      qty:2,    notes:'CF-Express Type A',      owner:'강영주'},
+  {id:'eq19',name:'Lexar Silver 160GB',        company:'Lexar',             types:['Memory Card'],      qty:2,    notes:'CF-Express Type A',      owner:'강영주', buydate:'2025-05-17', price:97900},
   {id:'eq20',name:'Cine Eye 2',               company:'Accsoon',           types:['Wireless'],         qty:1,    notes:'Transmission',           owner:'강영주'},
   {id:'eq21',name:'Ultra Studio Recorder 3G', company:'Blackmagic Design', types:['I/O'],              qty:1,    notes:'',                       owner:'강영주'},
   {id:'eq22',name:'Sync E',                   company:'Tentacle',          types:['Recorder','TC'],    qty:1,    notes:'Timecode Generator',     owner:'김준석'},
@@ -1030,6 +1034,9 @@ async function setupListeners(){
   }));
   _unsubs.push(db.collection('equipment').onSnapshot(snap=>{
     equip=snap.docs.map(d=>({id:d.id,...d.data()}));
+    // 반출 모달 자동완성 목록 갱신
+    const dl=document.getElementById('eq-names-list');
+    if(dl) dl.innerHTML=equip.map(q=>`<option value="${x(q.name)}">`).join('');
     if(isActive('equipment')) renderEq();
   }));
   _unsubs.push(db.collection('exports').onSnapshot(snap=>{
@@ -1299,10 +1306,11 @@ function renderEq(){
 }
 function eqRow(e){
   const g=eqGroup(e.types?.[0]||'Camera');
-  const subParts=[e.company,e.notes].filter(Boolean);
-  const typeLabel=e.types?.[0]||'';
-  // 반출중 여부: exports_ 중 equipId가 일치하는 항목 존재하면 반출중
+  const subParts=[e.company&&e.company!=='-'?e.company:null,e.notes].filter(Boolean);
+  const typeLabel=(e.types||[]).join(', ')||'';
   const activeExp=exports_.find(ex=>ex.equipId===e.id);
+  const priceStr=e.price!=null?'₩'+Number(e.price).toLocaleString():'';
+  const dateStr=e.buydate?e.buydate.replace(/-/g,'.'):'';
   return `<div class="eq-row" style="--rclr:${g.color}" onclick="openEqModal('${e.id}')">
     <div class="eq-ico-wrap" style="background:${g.color}18">${g.ico}</div>
     <div class="eq-row-body">
@@ -1311,6 +1319,7 @@ function eqRow(e){
         ${e.owner?`<span class="eq-owner-tag">👤 ${x(e.owner)}</span>`:''}
         <span>${[...subParts,`<span style="color:${g.color};opacity:.7">${typeLabel}</span>`].join(' · ')}</span>
       </div>
+      ${priceStr?`<div class="eq-price-tag">💰 ${priceStr}${dateStr?' · 📅 '+dateStr:''}</div>`:dateStr?`<div class="eq-buydate-tag">📅 ${dateStr}</div>`:''}
     </div>
     <div class="eq-row-right">
       ${activeExp?`<div class="eq-export-badge">반출중</div>`:''}
@@ -1544,6 +1553,8 @@ function openEqModal(id){
   document.getElementById('eq-company').value=e?.company||'';
   document.getElementById('eq-type').value=e?.types?.[0]||'Camera';
   document.getElementById('eq-qty').value=e?.qty!=null?e.qty:'';
+  document.getElementById('eq-buydate').value=e?.buydate||'';
+  document.getElementById('eq-price').value=e?.price!=null?e.price:'';
   document.getElementById('eq-notes').value=e?.notes||'';
   document.getElementById('eq-del-btn').style.display=e?'':'none';
   document.getElementById('eq-overlay').classList.add('show');
@@ -1552,10 +1563,13 @@ async function saveEq(){
   const name=document.getElementById('eq-name').value.trim();
   if(!name){toast('제품명을 입력해주세요');return;}
   const q=document.getElementById('eq-qty').value;
+  const pr=document.getElementById('eq-price').value;
   const d={name,owner:document.getElementById('eq-owner').value.trim(),
     company:document.getElementById('eq-company').value.trim(),
     types:[document.getElementById('eq-type').value],
     qty:q!==''?Number(q):null,
+    buydate:document.getElementById('eq-buydate').value||null,
+    price:pr!==''?Number(pr):null,
     notes:document.getElementById('eq-notes').value.trim()};
   try{
     if(editEqId){await db.collection('equipment').doc(editEqId).update(d);}
