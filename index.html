@@ -957,32 +957,50 @@ async function setupListeners(){
   if(evCheck.empty){ await seedData(); }
   let _evFirstLoad=true;
   _unsubs.push(db.collection('events').onSnapshot(snap=>{
-    // 초기 로드가 아닐 때 변경 감지 → 알림 내역 누적 (푸시 ON/OFF 무관)
-    if(!_evFirstLoad){
+    const newEvents=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(_evFirstLoad){
+      // ── 앱 최초 로드: 캐시와 비교 → 닫혀있던 동안 변경 내역 복원 ──
+      // 푸시 ON/OFF, 앱 열림/닫힘 무관하게 항상 동작
+      const cache=_loadEvCache();
+      if(Object.keys(cache).length>0){
+        // 캐시가 있을 때만 비교 (첫 설치 시엔 스킵)
+        const curMap=Object.fromEntries(newEvents.map(e=>[e.id,e]));
+        // 추가·수정
+        newEvents.forEach(ev=>{
+          const sig=_evSig(ev);
+          if(!cache[ev.id]){
+            addNotifHistory(`📅 일정 추가: ${ev.title||''}`,ev.date?fmtD(ev.date):'',ev.id);
+          } else if(cache[ev.id].sig!==sig){
+            addNotifHistory(`✏️ 일정 수정: ${ev.title||''}`,ev.date?fmtD(ev.date):'',ev.id);
+          }
+        });
+        // 삭제
+        Object.values(cache).forEach(c=>{
+          if(!curMap[c.id]){
+            addNotifHistory(`🗑 일정 삭제: ${c.title||''}`,c.date?fmtD(c.date):'','');
+          }
+        });
+      }
+      _saveEvCache(newEvents);
+      _evFirstLoad=false;
+    } else {
+      // ── 앱 열려있는 동안 실시간 변경 ──
       snap.docChanges().forEach(ch=>{
+        const ev={id:ch.doc.id,...ch.doc.data()};
         if(ch.type==='added'||ch.type==='modified'){
-          const ev={id:ch.doc.id,...ch.doc.data()};
-          const label=ch.type==='added'?'📅 일정 추가':'✏️ 일정 수정';
           addNotifHistory(
-            `${label}: ${ev.title||'(제목없음)'}`,
-            ev.date?fmtD(ev.date):'',
-            ev.id
+            `${ch.type==='added'?'📅 일정 추가':'✏️ 일정 수정'}: ${ev.title||''}`,
+            ev.date?fmtD(ev.date):'', ev.id
           );
         }
         if(ch.type==='removed'){
-          const ev={id:ch.doc.id,...ch.doc.data()};
-          addNotifHistory(
-            `🗑 일정 삭제: ${ev.title||'(제목없음)'}`,
-            ev.date?fmtD(ev.date):'',
-            ''
-          );
+          addNotifHistory(`🗑 일정 삭제: ${ev.title||''}`,ev.date?fmtD(ev.date):'','');
         }
       });
+      _saveEvCache(newEvents);
     }
-    _evFirstLoad=false;
-    events=snap.docs.map(d=>({id:d.id,...d.data()}));
+    events=newEvents;
     if(isActive('schedule')) renderSched();
-    // 앱 시작 시 알림 클릭으로 열린 경우 → 해당 날짜로 이동
     if(window._pendingNotifEv){
       const eid=window._pendingNotifEv; window._pendingNotifEv=null;
       goToNotif(eid);
@@ -1607,12 +1625,39 @@ if('serviceWorker' in navigator){
       // 알림 배너 렌더링 + 배지 초기화
       renderNotifBanner();
       renderNotifBadge();
+      // IndexedDB에 쌓인 백그라운드 알림 내역 flush
+      flushPendingNotifsFromIDB();
     } catch(err) {
       console.warn('[SW] register failed', err);
       renderNotifBanner();
       renderNotifBadge();
     }
   });
+}
+
+// ── IndexedDB → localStorage 알림 내역 동기화 ──
+// SW의 onBackgroundMessage가 앱 닫혀있을 때 IndexedDB에 저장
+// → 앱이 열릴 때 여기서 읽어서 localStorage 내역으로 이동
+function flushPendingNotifsFromIDB(){
+  try {
+    const req = indexedDB.open('mbsu-notifs', 1);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore('pending', { autoIncrement: true });
+    };
+    req.onsuccess = e => {
+      const idb = e.target.result;
+      const tx = idb.transaction('pending', 'readwrite');
+      const store = tx.objectStore('pending');
+      store.getAll().onsuccess = ev => {
+        const items = ev.target.result || [];
+        if(!items.length) return;
+        items.forEach(n => addNotifHistory(n.title||'MBSU Prod', n.body||'', n.eventId||''));
+        store.clear();
+        renderNotifBadge();
+        console.log('[IDB] flushed', items.length, 'pending notifs');
+      };
+    };
+  } catch(e){ console.warn('[IDB] flush failed', e); }
 }
 
 // ── SW → 앱 메시지 수신 (알림 클릭 → 기록 + 캘린더 이동) ──
@@ -1652,12 +1697,12 @@ function initFCM(swReg){
     _messaging = firebase.messaging();
     // 포그라운드 메시지 수신 처리 (앱이 열려있을 때)
     _messaging.onMessage(payload => {
+      // 포그라운드: 토스트만 표시
+      // 내역은 Firestore onSnapshot 변경 감지가 처리 (중복 방지)
       const n = payload.notification || {};
       const d = payload.data || {};
       const title = n.title || d.title || '알림';
       const body  = n.body  || d.body  || '';
-      const eventId = d.eventId || '';
-      addNotifHistory(title, body, eventId);
       toast(`🔔 ${title}: ${body}`);
     });
   } catch(e) {
@@ -1760,10 +1805,20 @@ function fmtAgo(ts){
 }
 function goToNotif(eventId){
   go('schedule');
-  if(eventId){
-    // 해당 날짜 찾아서 이동
-    const ev = events.find(e=>e.id===eventId);
-    if(ev && ev.date){ selDate=ev.date; renderSched(); }
+  if(!eventId) return;
+  const ev = events.find(e=>e.id===eventId);
+  if(ev && ev.date){
+    // 해당 날짜가 있는 달로 캘린더 이동
+    const d = new Date(ev.date + 'T00:00:00');
+    calY = d.getFullYear();
+    calM = d.getMonth();
+    selDate = ev.date;
+    renderSched();
+    // 이벤트 목록 영역 스크롤
+    setTimeout(() => {
+      const el = document.getElementById('ev-list');
+      if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 150);
   }
 }
 function clearAllNotifHistory(){
@@ -1985,6 +2040,25 @@ function fmtD(s){if(!s)return'';try{const d=new Date(s+'T00:00:00');return d.toL
 function x(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 let _tt;
 function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('show'),2400);}
+
+// ════════════════════════════════════════
+//  이벤트 캐시 (앱 닫혀있던 동안의 변경 감지용)
+// ════════════════════════════════════════
+const EV_CACHE_KEY='mbsu-ev-cache';
+// 이벤트의 핵심 필드만 문자열로 — 변경 감지용 시그니처
+function _evSig(ev){
+  return [ev.title,ev.date,ev.type,
+    Array.isArray(ev.person)?ev.person.sort().join(','):ev.person,
+    ev.startTime,ev.endTime,ev.location].join('|');
+}
+function _loadEvCache(){
+  try{ return JSON.parse(localStorage.getItem(EV_CACHE_KEY)||'{}'); }catch(e){ return {}; }
+}
+function _saveEvCache(evList){
+  const cache={};
+  evList.forEach(ev=>{ cache[ev.id]={id:ev.id,title:ev.title||'',date:ev.date||'',sig:_evSig(ev)}; });
+  localStorage.setItem(EV_CACHE_KEY, JSON.stringify(cache));
+}
 
 // ── 새로고침 시 현재 해시 페이지 유지 (스크립트 맨 끝에서 실행 — 모든 const 선언 완료 후) ──
 (function(){
