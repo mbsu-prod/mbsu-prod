@@ -1636,11 +1636,13 @@ async function registerFCMToken(swReg){
     if(swReg) opts.serviceWorkerRegistration = swReg;
     const token = await _messaging.getToken(opts);
     if(!token){ console.warn('[FCM] no token'); return; }
+    // 토큰을 localStorage에도 저장 (OFF 시 삭제에 사용)
+    localStorage.setItem('mbsu-fcm-token', token);
     await db.collection('fcm_tokens').doc(token).set({
       createdAt: Date.now(),
       ua: navigator.userAgent.slice(0, 120)
     });
-    console.log('[FCM] token registered');
+    console.log('[FCM] token registered:', token.slice(0,20)+'...');
   } catch(e) {
     console.warn('[FCM] getToken failed', e);
   }
@@ -1739,39 +1741,54 @@ async function handleNotifToggle(on){
   const sub = document.getElementById('notif-toggle-sub');
   const chk = document.getElementById('notif-toggle-chk');
   if(on){
-    // 권한이 없으면 먼저 요청
+    // 브라우저 권한 확인 / 요청
+    if(Notification.permission === 'denied'){
+      if(chk) chk.checked = false;
+      if(sub) sub.textContent = '브라우저 설정에서 알림 차단을 해제해 주세요';
+      toast('⚠️ 브라우저 설정에서 알림을 허용해 주세요');
+      return;
+    }
     if(Notification.permission !== 'granted'){
       const result = await Notification.requestPermission();
       if(result !== 'granted'){
         if(chk) chk.checked = false;
-        if(sub) sub.textContent = '브라우저 설정에서 알림을 허용해 주세요';
+        if(sub) sub.textContent = '알림 권한이 필요합니다';
         return;
       }
     }
-    // Firestore에 FCM 토큰 등록
+    // Firestore에 토큰 등록 (알림 수신 시작)
     localStorage.removeItem('mbsu-notif-off');
     const swReg = await navigator.serviceWorker.getRegistration('./') || undefined;
     await registerFCMToken(swReg);
     if(sub) sub.textContent = '팀 일정 변경 시 알림을 받습니다';
     toast('✅ 알림이 활성화됐습니다 🔔');
   } else {
-    // Firestore에서 FCM 토큰 삭제 → Cloudflare Worker가 이 기기로 전송 안 함
-    try {
-      if(_messaging){
-        const opts = { vapidKey: VAPID_KEY };
-        const swReg = await navigator.serviceWorker.getRegistration('./');
-        if(swReg) opts.serviceWorkerRegistration = swReg;
-        const token = await _messaging.getToken(opts);
-        if(token){
-          await db.collection('fcm_tokens').doc(token).delete();
-          await _messaging.deleteToken();
-          console.log('[FCM] token removed from Firestore');
+    // localStorage에 저장해둔 토큰으로 Firestore 문서 삭제
+    // → Cloudflare Worker 발송 목록에서 제거 → 알림 수신 중단
+    const savedToken = localStorage.getItem('mbsu-fcm-token');
+    if(savedToken){
+      try {
+        await db.collection('fcm_tokens').doc(savedToken).delete();
+        console.log('[FCM] token deleted from Firestore');
+      } catch(e){ console.warn('[FCM] Firestore delete failed', e); }
+    } else {
+      // 저장된 토큰이 없으면 SDK에서 직접 가져와서 삭제
+      try {
+        if(_messaging){
+          const opts = { vapidKey: VAPID_KEY };
+          const swReg = await navigator.serviceWorker.getRegistration('./');
+          if(swReg) opts.serviceWorkerRegistration = swReg;
+          const token = await _messaging.getToken(opts);
+          if(token){
+            await db.collection('fcm_tokens').doc(token).delete();
+            console.log('[FCM] token deleted from Firestore (fallback)');
+          }
         }
-      }
-    } catch(e){ console.warn('[FCM] deleteToken failed', e); }
+      } catch(e){ console.warn('[FCM] token fetch/delete failed', e); }
+    }
     localStorage.setItem('mbsu-notif-off','1');
     if(sub) sub.textContent = '알림이 꺼져 있습니다';
-    toast('🔕 알림을 껐습니다');
+    toast('🔕 알림이 꺼졌습니다');
   }
 }
 function initNotifToggle(){
