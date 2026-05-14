@@ -1008,14 +1008,6 @@ function go(page,pushState=true){
   if(pushState) history.pushState({page},'','#'+page);
 }
 window.addEventListener('popstate',e=>{go(e.state?.page||'home',false);});
-// 새로고침 시 현재 해시 페이지 유지
-(function(){
-  const _PAGES=['home','schedule','equipment','exports','filmography','feedback','notifications'];
-  const _hash=(location.hash||'').slice(1);
-  const _start=_PAGES.includes(_hash)?_hash:'home';
-  history.replaceState({page:_start},'','#'+_start);
-  go(_start,false);
-})();
 
 // ════════════════════════════════════════
 //  SCHEDULE
@@ -1920,6 +1912,15 @@ function fmtD(s){if(!s)return'';try{const d=new Date(s+'T00:00:00');return d.toL
 function x(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 let _tt;
 function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>e.classList.remove('show'),2400);}
+
+// ── 새로고침 시 현재 해시 페이지 유지 (스크립트 맨 끝에서 실행 — 모든 const 선언 완료 후) ──
+(function(){
+  const _PAGES=['home','schedule','equipment','exports','filmography','feedback','notifications'];
+  const _hash=(location.hash||'').slice(1);
+  const _start=_PAGES.includes(_hash)?_hash:'home';
+  history.replaceState({page:_start},'','#'+_start);
+  go(_start,false);
+})();
 </script>
 </body>
 </html>
