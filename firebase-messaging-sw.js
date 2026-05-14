@@ -36,6 +36,7 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // ── PWA 캐시 ─────────────────────────────
+// ※ push 이벤트 리스너 없음 — Firebase SDK(onBackgroundMessage)가 처리
 const CACHE = 'mbsu-v3';
 const SHELL = ['./', './icon-192.png', './icon-512.png'];
 
