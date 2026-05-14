@@ -3,7 +3,6 @@
 //  PWA 캐싱 + FCM 푸시 수신
 // ════════════════════════════════════════
 
-// Firebase import — getToken() 동작에 필요
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
@@ -16,39 +15,14 @@ firebase.initializeApp({
   appId:             "1:899152711355:web:c94ff0b41f4b2810c1639e"
 });
 
-// messaging 인스턴스 생성 (getToken 연동용)
-// onBackgroundMessage 등록 안 함 → 아래 push 이벤트에서 직접 처리
-firebase.messaging();
+const messaging = firebase.messaging();
 
-// ── 백그라운드 푸시 수신 (raw push event) ─
-// data-only 메시지이므로 Firebase SDK가 자동 표시 안 함
-// 여기서 1번만 처리
-self.addEventListener('push', event => {
-  if (!event.data) return;
-  let payload;
-  try { payload = event.data.json(); } catch(e) { return; }
-
-  const d = payload.data || {};
-  const title   = d.title   || 'MBSU Prod';
-  const body    = d.body    || '';
-  const eventId = d.eventId || '';
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clients => {
-        const hasFocus = clients.some(c => c.visibilityState === 'visible');
-        if (hasFocus) return; // 앱 열려있음 → onMessage 토스트가 처리
-        return self.registration.showNotification(title, {
-          body,
-          icon:    './icon-192.png',
-          badge:   './icon-192.png',
-          tag:     eventId ? 'mbsu-' + eventId : 'mbsu-update',
-          data:    d,
-          vibrate: [200, 100, 200]
-        });
-      })
-  );
-});
+// ── 백그라운드 알림 처리 ──────────────────
+// Worker가 webpush.notification으로 보내면
+// Firebase SDK가 백그라운드에서 자동으로 OS 알림 1개 표시
+// → onBackgroundMessage 등록 불필요 (등록하면 중복 발생)
+//
+// 포그라운드는 main app의 onMessage에서 토스트로 처리
 
 // ── 알림 클릭 → 앱 열기 ──────────────────
 self.addEventListener('notificationclick', event => {
@@ -63,12 +37,9 @@ self.addEventListener('notificationclick', event => {
 
 // ── PWA 캐시 ─────────────────────────────
 const CACHE = 'mbsu-v4';
-const SHELL = ['./', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', e => {
@@ -86,13 +57,7 @@ self.addEventListener('fetch', e => {
       e.request.url.includes('gstatic') ||
       e.request.url.includes('firebase')) return;
   e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
 
