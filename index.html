@@ -200,6 +200,24 @@ input,select,textarea{font-family:inherit}
 .eq-qty-badge{font-size:11px;font-weight:700;color:var(--tx);background:var(--bg);border:1px solid var(--bd);padding:2px 9px;border-radius:7px;white-space:nowrap}
 .eq-price-tag{font-size:10px;color:var(--green);font-weight:600;margin-top:2px}
 .eq-buydate-tag{font-size:10px;color:var(--mu);margin-top:1px}
+.type-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tchip{border:1.5px solid var(--bd);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--mu);background:var(--card2);cursor:pointer;transition:all .15s}
+.tchip.active{color:var(--blue);border-color:var(--blue);background:var(--blue-d)}
+.eq-photo-wrap{width:100%;height:110px;background:var(--card2);border:1.5px dashed var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;transition:border-color .2s}
+.eq-photo-wrap:hover{border-color:var(--blue)}
+.eq-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.eq-photo-lbl{font-size:12px;color:var(--mu);text-align:center;pointer-events:none}
+.eq-ico-wrap img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.eq-export-section{margin-top:4px;padding:10px 14px;background:var(--card2);border-radius:10px;border:1px solid var(--bd)}
+.eq-export-section-label{font-size:11px;color:var(--mu);margin-bottom:6px}
+.exp-project-block{background:var(--card);border:1px solid var(--bd);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.exp-project-hdr{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);cursor:pointer}
+.exp-project-name{font-weight:700;font-size:14px}
+.exp-project-cnt{font-size:11px;color:var(--mu)}
+.exp-return-all-btn{font-size:11px;color:var(--red);font-weight:700;padding:4px 10px;border-radius:8px;background:var(--red-d)}
+.exp-view-tabs{display:flex;gap:6px;padding:0 14px 12px}
+.exp-view-tab{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--mu);background:var(--card2);border:1px solid var(--bd);transition:all .15s}
+.exp-view-tab.active{color:var(--blue);background:var(--blue-d);border-color:var(--blue)}
 .eq-export-badge{font-size:10px;font-weight:700;color:#fff;background:var(--amber);padding:2px 8px;border-radius:7px;white-space:nowrap}
 .exp-owner{font-size:11px;color:var(--mu);margin-top:2px}
 .filmo-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--bd);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:0}
@@ -373,6 +391,7 @@ input,select,textarea{font-family:inherit}
 <body>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 <div id="app-root">
 <div class="page active" id="pg-home">
@@ -510,6 +529,10 @@ input,select,textarea{font-family:inherit}
     </div>
   </div>
   <div class="list-body">
+    <div class="exp-view-tabs">
+      <button class="exp-view-tab active" id="exp-tab-all" onclick="setExpView('all')">전체</button>
+      <button class="exp-view-tab" id="exp-tab-project" onclick="setExpView('project')">작품별</button>
+    </div>
     <div class="el-hdr"><span>반출 현황</span><span id="exp-count" style="color:var(--mu)"></span></div>
     <div class="ev-list" id="exp-list"></div>
   </div>
@@ -575,19 +598,43 @@ input,select,textarea{font-family:inherit}
     <div class="fg"><label class="fl">소유자</label><input class="fi" id="eq-owner" type="text" placeholder="소유자 이름 (선택)"></div>
     <div class="fg"><label class="fl">제조사</label><input class="fi" id="eq-company" type="text" placeholder="제조사 (선택)"></div>
     <div class="fg">
-      <label class="fl">분류</label>
-      <select class="fsel" id="eq-type">
-        <option>Camera</option><option>Lens</option><option>Recorder</option><option>Light</option>
-        <option>Stand</option><option>Grip</option><option>TC</option><option>I/O</option>
-        <option>Mac OS</option><option>HDD</option><option>SSD</option><option>Storage</option>
-        <option>Memory Card</option><option>Car</option><option>Wireless</option>
-        <option>Filter</option><option>ACC</option><option>Line</option>
-      </select>
+      <label class="fl">분류 (복수 선택 가능)</label>
+      <div class="type-chips" id="eq-type-chips">
+        <button type="button" class="tchip" data-t="Camera" onclick="toggleTChip(this)">Camera</button>
+        <button type="button" class="tchip" data-t="Lens" onclick="toggleTChip(this)">Lens</button>
+        <button type="button" class="tchip" data-t="Recorder" onclick="toggleTChip(this)">Recorder</button>
+        <button type="button" class="tchip" data-t="Light" onclick="toggleTChip(this)">Light</button>
+        <button type="button" class="tchip" data-t="Stand" onclick="toggleTChip(this)">Stand</button>
+        <button type="button" class="tchip" data-t="Filter" onclick="toggleTChip(this)">Filter</button>
+        <button type="button" class="tchip" data-t="Grip" onclick="toggleTChip(this)">Grip</button>
+        <button type="button" class="tchip" data-t="ACC" onclick="toggleTChip(this)">ACC</button>
+        <button type="button" class="tchip" data-t="TC" onclick="toggleTChip(this)">TC</button>
+        <button type="button" class="tchip" data-t="I/O" onclick="toggleTChip(this)">I/O</button>
+        <button type="button" class="tchip" data-t="Wireless" onclick="toggleTChip(this)">Wireless</button>
+        <button type="button" class="tchip" data-t="Line" onclick="toggleTChip(this)">Line</button>
+        <button type="button" class="tchip" data-t="HDD" onclick="toggleTChip(this)">HDD</button>
+        <button type="button" class="tchip" data-t="SSD" onclick="toggleTChip(this)">SSD</button>
+        <button type="button" class="tchip" data-t="Storage" onclick="toggleTChip(this)">Storage</button>
+        <button type="button" class="tchip" data-t="Memory Card" onclick="toggleTChip(this)">Memory Card</button>
+        <button type="button" class="tchip" data-t="Mac OS" onclick="toggleTChip(this)">Mac OS</button>
+        <button type="button" class="tchip" data-t="Car" onclick="toggleTChip(this)">Car</button>
+      </div>
     </div>
     <div class="fg"><label class="fl">수량</label><input class="fi" id="eq-qty" type="number" placeholder="수량 (선택)"></div>
     <div class="fg"><label class="fl">구매 날짜</label><input class="fi" id="eq-buydate" type="date"></div>
     <div class="fg"><label class="fl">금액 (원)</label><input class="fi" id="eq-price" type="number" placeholder="금액 (선택)"></div>
     <div class="fg"><label class="fl">메모</label><input class="fi" id="eq-notes" type="text" placeholder="메모 (선택)"></div>
+    <div class="fg">
+      <label class="fl">사진</label>
+      <div class="eq-photo-wrap" id="eq-photo-wrap" onclick="document.getElementById('eq-photo-file').click()">
+        <div class="eq-photo-lbl" id="eq-photo-lbl">📷 탭하여 사진 추가</div>
+      </div>
+      <input type="file" id="eq-photo-file" accept="image/*" style="display:none" onchange="previewEqPhoto(this)">
+    </div>
+    <div class="eq-export-section" id="eq-export-section" style="display:none">
+      <div class="eq-export-section-label">반출 현황</div>
+      <div id="eq-export-status-wrap"></div>
+    </div>
     <div class="f-actions">
       <button class="f-del" id="eq-del-btn" onclick="deleteEq()" style="display:none">삭제</button>
       <button class="f-cancel" onclick="closeAll()">취소</button>
@@ -800,6 +847,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+let storage = null;
+try { storage = firebase.storage(); } catch(e) { console.warn('Storage 비활성화됨:', e.message); }
 
 // ════════════════════════════════════════
 //  CONSTANTS
@@ -1268,28 +1317,40 @@ function evHTML(e){
 const EQ_GROUPS=[
   {id:'camera', name:'카메라',   ico:'🎥', color:'#e53935', types:['Camera','Lens','Recorder']},
   {id:'light',  name:'조명',     ico:'💡', color:'#f59e0b', types:['Light','Stand','Filter']},
-  {id:'grip',   name:'그립·소품',ico:'🔧', color:'#43a047', types:['Grip','ACC']},
+  {id:'grip',   name:'그립',     ico:'🔧', color:'#43a047', types:['Grip']},
+  {id:'acc',    name:'소품·ACC', ico:'📦', color:'#10b981', types:['ACC']},
   {id:'wire',   name:'통신·TC',  ico:'📡', color:'#1e88e5', types:['Wireless','TC','I/O','Line']},
   {id:'storage',name:'저장·IT',  ico:'💾', color:'#8b5cf6', types:['HDD','SSD','Storage','Memory Card','Mac OS']},
   {id:'car',    name:'차량',     ico:'🚗', color:'#ef5350', types:['Car']},
 ];
-function eqGroup(type){ return EQ_GROUPS.find(g=>g.types.includes(type))||EQ_GROUPS[0]; }
+// ACC가 포함된 경우 ACC그룹 우선
+function eqGroup(types){
+  const arr=Array.isArray(types)?types:[types||'Camera'];
+  if(arr.includes('ACC')) return EQ_GROUPS.find(g=>g.id==='acc');
+  return EQ_GROUPS.find(g=>g.types.some(t=>arr.includes(t)))||EQ_GROUPS[0];
+}
 function renderEq(){
   const q=(document.getElementById('eq-search')?.value||'').toLowerCase();
   document.getElementById('eq-filters').innerHTML=
     [{id:'전체',name:'전체',ico:'',color:''},...EQ_GROUPS].map(g=>`
       <button class="eq-fb${eqF===g.id?' active':''}" onclick="setEqF('${g.id}')">${g.ico?g.ico+' ':''}${g.name}</button>`).join('');
   let items=equip.filter(e=>{
-    const grp=eqGroup(e.types?.[0]||'Camera');
+    const grp=eqGroup(e.types||[]);
     const ok=eqF==='전체'||grp.id===eqF;
     const qk=!q||e.name.toLowerCase().includes(q)||(e.company||'').toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q);
     return ok&&qk;
+  });
+  // 구입날짜 1순위(내림차순), 이름 2순위
+  items.sort((a,b)=>{
+    const da=a.buydate||'0000', db_=b.buydate||'0000';
+    if(da!==db_) return db_.localeCompare(da);
+    return (a.name||'').localeCompare(b.name||'');
   });
   const el=document.getElementById('eq-list');
   if(!items.length){el.innerHTML='<div class="empty">검색 결과 없음</div>';return;}
   if(eqF==='전체'&&!q){
     const byG={};
-    items.forEach(e=>{const gid=eqGroup(e.types?.[0]||'Camera').id;(byG[gid]=byG[gid]||[]).push(e);});
+    items.forEach(e=>{const gid=eqGroup(e.types||[]).id;(byG[gid]=byG[gid]||[]).push(e);});
     el.innerHTML=EQ_GROUPS.filter(g=>byG[g.id]).map(g=>`
       <div class="eq-cat-block">
         <div class="eq-cat-hdr">
@@ -1304,14 +1365,17 @@ function renderEq(){
   }
 }
 function eqRow(e){
-  const g=eqGroup(e.types?.[0]||'Camera');
+  const g=eqGroup(e.types||[]);
   const subParts=[e.company&&e.company!=='-'?e.company:null,e.notes].filter(Boolean);
   const typeLabel=(e.types||[]).join(', ')||'';
   const activeExp=exports_.find(ex=>ex.equipId===e.id);
   const priceStr=e.price!=null?'₩'+Number(e.price).toLocaleString():'';
   const dateStr=e.buydate?e.buydate.replace(/-/g,'.'):'';
+  const icoHtml=e.photo
+    ?`<img src="${x(e.photo)}" alt="">`
+    :g.ico;
   return `<div class="eq-row" style="--rclr:${g.color}" onclick="openEqModal('${e.id}')">
-    <div class="eq-ico-wrap" style="background:${g.color}18">${g.ico}</div>
+    <div class="eq-ico-wrap" style="background:${e.photo?'transparent':g.color+'18'}">${icoHtml}</div>
     <div class="eq-row-body">
       <div class="eq-row-name">${x(e.name)}</div>
       <div class="eq-row-sub">
@@ -1331,27 +1395,60 @@ function setEqF(t){ eqF=t; renderEq(); }
 // ════════════════════════════════════════
 //  EXPORTS
 // ════════════════════════════════════════
+let expView='all';
+function setExpView(v){
+  expView=v;
+  document.getElementById('exp-tab-all').classList.toggle('active',v==='all');
+  document.getElementById('exp-tab-project').classList.toggle('active',v==='project');
+  renderExp();
+}
+function expItemHtml(e){
+  const eqItem=e.equipId?equip.find(q=>q.id===e.equipId):null;
+  const ownerStr=eqItem?.owner||'';
+  return `<div class="ev-item" style="cursor:pointer" onclick="openExpModal('${e.id}')">
+    <div class="ev-bar" style="background:var(--amber)"></div>
+    <div class="ev-info">
+      <div class="ev-name">${x(e.equip)}</div>
+      <div class="ev-meta">
+        ${e.dest?`<span>📁 ${x(e.dest)}</span>`:''}
+        ${e.date?`<span>📅 ${fmtD(e.date)}</span>`:''}
+        ${e.qty?`<span>${e.qty}개</span>`:''}
+      </div>
+      ${ownerStr?`<div class="exp-owner">👤 ${x(ownerStr)}</div>`:''}
+    </div>
+    <span style="font-size:12px;color:var(--mu2)">›</span>
+  </div>`;
+}
 function renderExp(){
   document.getElementById('exp-count').textContent=`${exports_.length}건`;
   const c=document.getElementById('exp-list');
-  c.innerHTML=exports_.length?exports_.map(e=>{
-    // equipId로 장비 소유자 조회 (연동)
-    const eqItem=e.equipId?equip.find(q=>q.id===e.equipId):null;
-    const ownerStr=eqItem?.owner||'';
-    return `<div class="ev-item" style="cursor:pointer" onclick="openExpModal('${e.id}')">
-      <div class="ev-bar" style="background:var(--amber)"></div>
-      <div class="ev-info">
-        <div class="ev-name">${x(e.equip)}</div>
-        <div class="ev-meta">
-          ${e.dest?`<span>📁 ${x(e.dest)}</span>`:''}
-          ${e.date?`<span>📅 ${fmtD(e.date)}</span>`:''}
-          ${e.qty?`<span>${e.qty}개</span>`:''}
+  if(!exports_.length){c.innerHTML='<div class="empty">반출 내역이 없습니다</div>';return;}
+  if(expView==='project'){
+    // 작품별 그룹
+    const byDest={};
+    exports_.forEach(e=>{const k=e.dest||'(미지정)';(byDest[k]=byDest[k]||[]).push(e);});
+    c.innerHTML=Object.entries(byDest).map(([dest,items])=>`
+      <div class="exp-project-block">
+        <div class="exp-project-hdr">
+          <div>
+            <div class="exp-project-name">📁 ${x(dest)}</div>
+            <div class="exp-project-cnt">${items.length}개 장비</div>
+          </div>
+          <button class="exp-return-all-btn" onclick="event.stopPropagation();returnAllByDest('${x(dest)}')">전체 반납</button>
         </div>
-        ${ownerStr?`<div class="exp-owner">👤 ${x(ownerStr)}</div>`:''}
-      </div>
-      <span style="font-size:12px;color:var(--mu2)">›</span>
-    </div>`;
-  }).join(''):'<div class="empty">반출 내역이 없습니다</div>';
+        ${items.map(expItemHtml).join('')}
+      </div>`).join('');
+  } else {
+    c.innerHTML=exports_.map(expItemHtml).join('');
+  }
+}
+async function returnAllByDest(dest){
+  const targets=exports_.filter(e=>(e.dest||'(미지정)')===dest);
+  if(!targets.length||!confirm(`"${dest}" 작품의 장비 ${targets.length}개를 모두 반납 처리하시겠습니까?`))return;
+  const batch=db.batch();
+  targets.forEach(e=>batch.delete(db.collection('exports').doc(e.id)));
+  await batch.commit();
+  toast('✅ 전체 반납 처리됐습니다');
 }
 
 // ════════════════════════════════════════
@@ -1550,11 +1647,36 @@ function openEqModal(id){
   document.getElementById('eq-name').value=e?.name||'';
   document.getElementById('eq-owner').value=e?.owner||'';
   document.getElementById('eq-company').value=e?.company||'';
-  document.getElementById('eq-type').value=e?.types?.[0]||'Camera';
+  setTypeChips(e?.types||[]);
   document.getElementById('eq-qty').value=e?.qty!=null?e.qty:'';
   document.getElementById('eq-buydate').value=e?.buydate||'';
   document.getElementById('eq-price').value=e?.price!=null?e.price:'';
   document.getElementById('eq-notes').value=e?.notes||'';
+  // 사진
+  const wrap=document.getElementById('eq-photo-wrap');
+  const lbl=document.getElementById('eq-photo-lbl');
+  wrap.innerHTML='';
+  document.getElementById('eq-photo-file').value='';
+  if(e?.photo){
+    const img=document.createElement('img');img.src=e.photo;wrap.appendChild(img);
+  } else {
+    lbl.textContent='📷 탭하여 사진 추가';wrap.appendChild(lbl);
+  }
+  // 반출 현황
+  const expSec=document.getElementById('eq-export-section');
+  const expWrap=document.getElementById('eq-export-status-wrap');
+  if(id){
+    const activeExp=exports_.find(ex=>ex.equipId===id);
+    expSec.style.display='';
+    if(activeExp){
+      expWrap.innerHTML=`<div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:8px">📤 반출중: ${x(activeExp.dest||'')}</div>
+        <button class="f-cancel" style="width:100%;margin-top:0" onclick="returnEq('${activeExp.id}')">반납 처리</button>`;
+    } else {
+      expWrap.innerHTML=`<button class="f-save" style="width:100%;background:var(--amber)" onclick="openExpFromEq('${id}')">+ 반출 등록</button>`;
+    }
+  } else {
+    expSec.style.display='none';
+  }
   document.getElementById('eq-del-btn').style.display=e?'':'none';
   document.getElementById('eq-overlay').classList.add('show');
 }
@@ -1563,13 +1685,29 @@ async function saveEq(){
   if(!name){toast('제품명을 입력해주세요');return;}
   const q=document.getElementById('eq-qty').value;
   const pr=document.getElementById('eq-price').value;
+  const types=getTypeValues();
+  if(!types.length){toast('분류를 하나 이상 선택해주세요');return;}
+  // 사진 업로드
+  let photoUrl=editEqId?equip.find(v=>v.id===editEqId)?.photo||null:null;
+  const fileInput=document.getElementById('eq-photo-file');
+  if(fileInput.files.length){
+    if(!storage){toast('사진 기능을 사용하려면 Firebase Storage를 먼저 활성화해주세요');return;}
+    toast('사진 업로드 중...');
+    try{
+      const file=fileInput.files[0];
+      const ref=storage.ref(`equipment/${Date.now()}_${file.name}`);
+      await ref.put(file);
+      photoUrl=await ref.getDownloadURL();
+    }catch(e){toast('사진 업로드 실패: '+e.message);return;}
+  }
   const d={name,owner:document.getElementById('eq-owner').value.trim(),
     company:document.getElementById('eq-company').value.trim(),
-    types:[document.getElementById('eq-type').value],
+    types,
     qty:q!==''?Number(q):null,
     buydate:document.getElementById('eq-buydate').value||null,
     price:pr!==''?Number(pr):null,
-    notes:document.getElementById('eq-notes').value.trim()};
+    notes:document.getElementById('eq-notes').value.trim(),
+    photo:photoUrl};
   try{
     if(editEqId){await db.collection('equipment').doc(editEqId).update(d);}
     else{await db.collection('equipment').add(d);}
@@ -1580,6 +1718,43 @@ async function deleteEq(){
   if(!editEqId||!confirm('삭제하시겠습니까?'))return;
   await db.collection('equipment').doc(editEqId).delete();
   closeAll(); toast('삭제됐습니다');
+}
+// 타입 칩
+function toggleTChip(btn){
+  btn.classList.toggle('active');
+}
+function getTypeValues(){
+  return [...document.querySelectorAll('#eq-type-chips .tchip.active')].map(b=>b.dataset.t);
+}
+function setTypeChips(types){
+  document.querySelectorAll('#eq-type-chips .tchip').forEach(b=>{
+    b.classList.toggle('active', types.includes(b.dataset.t));
+  });
+}
+// 사진 미리보기
+function previewEqPhoto(input){
+  if(!input.files.length) return;
+  const wrap=document.getElementById('eq-photo-wrap');
+  wrap.innerHTML='';
+  const img=document.createElement('img');
+  img.src=URL.createObjectURL(input.files[0]);
+  wrap.appendChild(img);
+}
+// 장비 모달에서 반출 등록
+function openExpFromEq(eqId){
+  document.getElementById('eq-overlay').classList.remove('show');
+  openExpModal();
+  // 장비 미리 선택
+  setTimeout(()=>{
+    const sel=document.getElementById('exp-equip');
+    if(sel) sel.value=eqId;
+  },50);
+}
+// 장비 모달에서 반납 처리
+async function returnEq(expId){
+  if(!confirm('반납 처리하시겠습니까?'))return;
+  await db.collection('exports').doc(expId).delete();
+  closeAll(); toast('✅ 반납 처리됐습니다');
 }
 
 // — Export modal —
