@@ -273,7 +273,18 @@ input,select,textarea{font-family:inherit}
 .fi,.fsel{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;color:var(--tx);font-size:13px;transition:border-color .15s}
 .fi::placeholder{color:var(--mu2)}.fi:focus,.fsel:focus{outline:none;border-color:var(--blue);background:var(--input-focus-bg)}
 .fsel option{background:var(--card);color:var(--tx)}
-#exp-equip{height:44px;max-height:44px}
+/* ── CUSTOM EQUIP PICKER ─────────────────── */
+.equip-picker-btn{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 36px 10px 12px;color:var(--tx);font-size:13px;text-align:left;position:relative;cursor:pointer;transition:border-color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.equip-picker-btn:focus{outline:none;border-color:var(--blue)}
+.equip-picker-btn::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:12px;pointer-events:none}
+.equip-picker-btn.placeholder{color:var(--mu2)}
+.equip-picker-list{background:var(--card);border:1px solid var(--bd);border-radius:12px;max-height:220px;overflow-y:auto;margin-top:6px;box-shadow:var(--shadow-2);display:none}
+.equip-picker-list.open{display:block}
+.equip-picker-search{width:100%;background:var(--bg);border:none;border-bottom:1px solid var(--bd);padding:10px 12px;font-size:13px;color:var(--tx);border-radius:12px 12px 0 0;outline:none}
+.equip-picker-group{font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;padding:8px 12px 4px;background:var(--card2)}
+.equip-picker-item{padding:10px 14px;font-size:13px;color:var(--tx);cursor:pointer;border-bottom:1px solid var(--bd)}
+.equip-picker-item:last-child{border-bottom:none}
+.equip-picker-item:active,.equip-picker-item.selected{background:var(--blue-d);color:var(--blue)}
 /* ── DEST SUGGESTION DROPDOWN ───────────── */
 .dest-suggestions{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--bd);border-radius:10px;max-height:180px;overflow-y:auto;z-index:500;box-shadow:var(--shadow-2);margin-top:4px}
 .dest-sugg-item{padding:11px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bd);color:var(--tx)}
@@ -674,7 +685,15 @@ input,select,textarea{font-family:inherit}
       <span class="modal-title" id="exp-modal-title">반출 추가</span>
       <button class="modal-x" onclick="closeAll()">✕</button>
     </div>
-    <div class="fg"><label class="fl">장비 선택</label><select class="fsel" id="exp-equip" size="1"></select></div>
+    <div class="fg">
+      <label class="fl">장비 선택</label>
+      <button type="button" class="equip-picker-btn placeholder" id="exp-equip-btn" onclick="toggleEquipPicker()">— 장비 선택 —</button>
+      <input type="hidden" id="exp-equip" value="">
+      <div class="equip-picker-list" id="exp-equip-list">
+        <input class="equip-picker-search" id="exp-equip-search" type="text" placeholder="장비명 검색..." oninput="filterEquipPicker(this.value)">
+        <div id="exp-equip-options"></div>
+      </div>
+    </div>
     <div class="fg"><label class="fl">반출 날짜</label><input class="fi" id="exp-date" type="date"></div>
     <div class="fg" style="position:relative">
       <label class="fl">반출처 / 프로덕션</label>
@@ -1454,12 +1473,16 @@ let _destList=[];
 function setExpDest(d){ expDest=d; renderExp(); }
 function setExpDestByIdx(i){ setExpDest(i===-1?'all':_destList[i]); }
 
-// 작품별 고정 색상 팔레트
+// 작품별 고정 색상 팔레트 (인덱스 기반 — 다른 작품은 반드시 다른 색)
 const DEST_COLORS=['#007aff','#34c759','#ff9f0a','#ff3b30','#af52de','#ff6b35','#00c7be','#5856d6','#ff2d55','#30b0c7'];
+const _destColorMap={};
 function getDestColor(dest){
-  if(!dest) return 'var(--amber)';
-  let h=0; for(let i=0;i<dest.length;i++) h=(h*31+dest.charCodeAt(i))>>>0;
-  return DEST_COLORS[h%DEST_COLORS.length];
+  if(!dest) return '#8e8e93';
+  if(_destColorMap[dest]===undefined){
+    const used=Object.keys(_destColorMap).length;
+    _destColorMap[dest]=DEST_COLORS[used%DEST_COLORS.length];
+  }
+  return _destColorMap[dest];
 }
 
 // 반출처 커스텀 드롭다운
@@ -1516,8 +1539,11 @@ function expItemHtml(e){
 }
 
 function renderExp(){
+  // 색상 맵 재계산 (순서 고정)
+  Object.keys(_destColorMap).forEach(k=>delete _destColorMap[k]);
   // 1. 작품 탭 (전체 + 각 작품)
   _destList=[...new Set(exports_.map(e=>e.dest||'(미지정)'))];
+  _destList.forEach(d=>getDestColor(d)); // 순서대로 색상 미리 배정
   const tabsEl=document.getElementById('prod-tabs');
   if(tabsEl){
     tabsEl.innerHTML=[
@@ -1937,17 +1963,18 @@ function openExpModal(id){
   editExpId=id||null;
   const e=id?exports_.find(v=>v.id===id):null;
   document.getElementById('exp-modal-title').textContent=e?'반출 수정':'반출 추가';
-  // 장비 드롭다운 구성 (종류별 그룹)
-  const sel=document.getElementById('exp-equip');
-  const sorted=[...equip].sort((a,b)=>(a.types?.[0]||'').localeCompare(b.types?.[0]||'')||(a.name||'').localeCompare(b.name||''));
-  let lastType='', html='<option value="">— 장비 선택 —</option>';
-  sorted.forEach(q=>{
-    const t=q.types?.[0]||'기타';
-    if(t!==lastType){ if(lastType) html+='</optgroup>'; html+=`<optgroup label="${t}">`; lastType=t; }
-    html+=`<option value="${q.id}"${e?.equipId===q.id?' selected':''}>${x(q.name)}${q.company?' ('+x(q.company)+')':''}</option>`;
-  });
-  if(lastType) html+='</optgroup>';
-  sel.innerHTML=html;
+  // 커스텀 장비 피커 초기화
+  const pickerBtn=document.getElementById('exp-equip-btn');
+  const pickerInput=document.getElementById('exp-equip');
+  const pickerList=document.getElementById('exp-equip-list');
+  const pickerSearch=document.getElementById('exp-equip-search');
+  pickerInput.value=e?.equipId||'';
+  pickerSearch.value='';
+  pickerList.classList.remove('open');
+  const selEq=e?.equipId?equip.find(q=>q.id===e.equipId):null;
+  if(selEq){ pickerBtn.textContent=selEq.name+(selEq.company?' ('+selEq.company+')':''); pickerBtn.classList.remove('placeholder'); }
+  else { pickerBtn.textContent='— 장비 선택 —'; pickerBtn.classList.add('placeholder'); }
+  renderEquipPickerOptions('');
   document.getElementById('exp-date').value=e?.date||new Date().toISOString().slice(0,10);
   document.getElementById('exp-dest').value=e?.dest||'';
   document.getElementById('exp-qty').value=e?.qty||'';
@@ -1979,6 +2006,35 @@ async function delExp(){
   await db.collection('exports').doc(editExpId).delete();
   closeAll(); toast('삭제됐습니다');
 }
+// ── 커스텀 장비 피커 ──────────────────────
+function renderEquipPickerOptions(q){
+  const sorted=[...equip].sort((a,b)=>(a.types?.[0]||'').localeCompare(b.types?.[0]||'')||(a.name||'').localeCompare(b.name||''));
+  const filtered=q?sorted.filter(e=>(e.name||'').toLowerCase().includes(q.toLowerCase())||(e.company||'').toLowerCase().includes(q.toLowerCase())):sorted;
+  const cur=document.getElementById('exp-equip')?.value||'';
+  let lastType='', html='';
+  filtered.forEach(item=>{
+    const t=item.types?.[0]||'기타';
+    if(!q&&t!==lastType){ html+=`<div class="equip-picker-group">${t}</div>`; lastType=t; }
+    const label=x(item.name)+(item.company?` <span style="color:var(--mu);font-size:11px">(${x(item.company)})</span>`:'');
+    html+=`<div class="equip-picker-item${cur===item.id?' selected':''}" onclick="selectEquip('${item.id}',${JSON.stringify(item.name+(item.company?' ('+item.company+')':''))})">${label}</div>`;
+  });
+  if(!html) html='<div style="padding:14px;font-size:13px;color:var(--mu);text-align:center">검색 결과 없음</div>';
+  document.getElementById('exp-equip-options').innerHTML=html;
+}
+function toggleEquipPicker(){
+  const list=document.getElementById('exp-equip-list');
+  const isOpen=list.classList.contains('open');
+  if(isOpen){ list.classList.remove('open'); }
+  else { list.classList.add('open'); document.getElementById('exp-equip-search').focus(); }
+}
+function filterEquipPicker(q){ renderEquipPickerOptions(q); }
+function selectEquip(id, label){
+  document.getElementById('exp-equip').value=id;
+  const btn=document.getElementById('exp-equip-btn');
+  btn.textContent=label; btn.classList.remove('placeholder');
+  document.getElementById('exp-equip-list').classList.remove('open');
+}
+
 // 반출 예정 ↔ 반출중 토글
 function setExpPlanned(planned){
   document.getElementById('exp-btn-planned')?.classList.toggle('active', planned);
