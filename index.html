@@ -1025,10 +1025,21 @@ function setPlatformChips(vals){
 // ════════════════════════════════════════
 //  FIREBASE LISTENERS
 // ════════════════════════════════════════
-setupListeners();
+setupListeners().catch(e=>{
+  console.error('[setupListeners] failed:', e);
+  toast('⚠️ Firestore 연결 오류: '+e.message);
+});
 async function setupListeners(){
   _unsubs.forEach(u=>u()); _unsubs=[];
-  const evCheck = await db.collection('events').limit(1).get();
+  let evCheck;
+  try {
+    evCheck = await db.collection('events').limit(1).get();
+  } catch(e) {
+    console.error('[Firestore] initial get failed:', e);
+    toast('⚠️ DB 연결 실패: '+e.message);
+    // 연결 실패해도 리스너는 등록 시도
+    evCheck = { empty: false };
+  }
   if(evCheck.empty){ await seedData(); }
   let _evFirstLoad=true;
   _unsubs.push(db.collection('events').onSnapshot(snap=>{
@@ -1687,18 +1698,14 @@ async function saveEq(){
   const pr=document.getElementById('eq-price').value;
   const types=getTypeValues();
   if(!types.length){toast('분류를 하나 이상 선택해주세요');return;}
-  // 사진 업로드
+  // 사진 압축 후 Base64로 Firestore에 저장 (Storage 불필요)
   let photoUrl=editEqId?equip.find(v=>v.id===editEqId)?.photo||null:null;
   const fileInput=document.getElementById('eq-photo-file');
   if(fileInput.files.length){
-    if(!storage){toast('사진 기능을 사용하려면 Firebase Storage를 먼저 활성화해주세요');return;}
-    toast('사진 업로드 중...');
+    toast('사진 압축 중...');
     try{
-      const file=fileInput.files[0];
-      const ref=storage.ref(`equipment/${Date.now()}_${file.name}`);
-      await ref.put(file);
-      photoUrl=await ref.getDownloadURL();
-    }catch(e){toast('사진 업로드 실패: '+e.message);return;}
+      photoUrl=await compressImage(fileInput.files[0]);
+    }catch(e){toast('사진 처리 실패: '+e.message);return;}
   }
   const d={name,owner:document.getElementById('eq-owner').value.trim(),
     company:document.getElementById('eq-company').value.trim(),
@@ -1729,6 +1736,30 @@ function getTypeValues(){
 function setTypeChips(types){
   document.querySelectorAll('#eq-type-chips .tchip').forEach(b=>{
     b.classList.toggle('active', types.includes(b.dataset.t));
+  });
+}
+// 이미지 압축 → Base64 반환 (max 400px, quality 0.75)
+function compressImage(file, maxPx=400, quality=0.75){
+  return new Promise((resolve, reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=e=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        let w=img.width, h=img.height;
+        if(w>maxPx||h>maxPx){
+          if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}
+          else{w=Math.round(w*maxPx/h);h=maxPx;}
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
 // 사진 미리보기
