@@ -2111,56 +2111,46 @@ function exportFilmoPDF(){
   const person=filmoP;
   const items=(filmo[person]||[]).slice().sort((a,b)=>(b.year||0)-(a.year||0));
   if(!items.length){toast('필모그래피가 없습니다');return;}
-  const cards=items.map(f=>{
+  const rows=items.map(f=>{
     const plats=Array.isArray(f.ott)?f.ott:(f.ott?[f.ott]:[]);
     const period=f.shootStart||f.shootEnd
       ?`${f.shootStart||''}${f.shootStart&&f.shootEnd?' ~ ':''}${f.shootEnd||''}`:'';
-    const badges=[f.type,f.prod,f.role].filter(Boolean).map(v=>`<span class="badge">${v}</span>`).join('');
-    const platBadges=plats.map(v=>`<span class="badge plat">${v}</span>`).join('');
-    return `<div class="card">
-      <div class="card-top">
-        <span class="year">${f.year||'—'}</span>
-        <span class="title">${f.title||''}</span>
-      </div>
-      <div class="badges">${badges}${platBadges}</div>
-      ${period?`<div class="meta">🎬 촬영기간: ${period}</div>`:''}
-      ${f.notes?`<div class="meta">📝 ${f.notes}</div>`:''}
-    </div>`;
+    return `<tr>
+      <td>${f.year||'—'}</td>
+      <td><strong>${f.title||''}</strong></td>
+      <td>${f.type||''}</td>
+      <td>${f.prod||''}</td>
+      <td>${f.role||''}</td>
+      <td>${period}</td>
+      <td>${plats.join(', ')}</td>
+      <td>${f.notes||''}</td>
+    </tr>`;
   }).join('');
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <title>${person} 필모그래피</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
-    padding:28px 20px;color:#1c1c1e;font-size:14px;background:#f2f2f7;min-height:100vh}
-  .wrap{max-width:640px;margin:0 auto}
-  h1{font-size:22px;font-weight:800;margin-bottom:4px}
-  .sub{color:#8e8e93;font-size:12px;margin-bottom:20px}
-  .print-btn{display:block;width:100%;padding:13px;background:#1c1c1e;color:#fff;border:none;
-    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:20px}
-  .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
-  .card-top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
-  .year{font-size:11px;font-weight:700;background:#f2f2f7;border:1px solid #e5e5ea;
-    color:#8e8e93;padding:2px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
-  .title{font-size:16px;font-weight:700;color:#1c1c1e;line-height:1.3}
-  .badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-  .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:8px;
-    background:#f2f2f7;border:1px solid #e5e5ea;color:#3c3c3e}
-  .badge.plat{background:#e8f0fe;border-color:#b8cfff;color:#1a56db}
-  .meta{font-size:12px;color:#8e8e93;margin-top:4px;line-height:1.5}
-  @media print{
-    body{background:#fff;padding:16px 12px}
-    .print-btn{display:none}
-    .card{box-shadow:none;border:1px solid #e5e5ea;break-inside:avoid;margin-bottom:8px}
-  }
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;padding:40px;color:#1c1c1e;font-size:14px;max-width:960px;margin:0 auto}
+  h1{font-size:24px;font-weight:800;margin-bottom:6px}
+  .sub{color:#8e8e93;font-size:13px;margin-bottom:28px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f2f2f7;padding:10px 12px;text-align:left;font-weight:700;border-bottom:2px solid #e5e5ea;white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid #e5e5ea;vertical-align:top;line-height:1.5}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f9f9fb}
+  strong{font-weight:700}
+  .print-btn{margin-bottom:24px;padding:10px 22px;background:#1c1c1e;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit}
+  @media print{body{padding:20px}.print-btn{display:none}}
 </style></head><body>
-<div class="wrap">
 <h1>${person} 필모그래피</h1>
 <div class="sub">총 ${items.length}편 · 출력일: ${new Date().toLocaleDateString('ko-KR')}</div>
 <button class="print-btn" onclick="window.print()">🖨 PDF 저장</button>
-${cards}
-</div>
+<table>
+  <thead><tr>
+    <th>연도</th><th>제목</th><th>구분</th><th>제작사</th><th>역할</th><th>촬영기간</th><th>플랫폼</th><th>메모</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
 </body></html>`;
   const w=window.open('','_blank');
   w.document.write(html);
