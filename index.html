@@ -2133,24 +2133,26 @@ function exportFilmoPDF(){
   body{font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;padding:40px;color:#1c1c1e;font-size:14px;max-width:960px;margin:0 auto}
   h1{font-size:24px;font-weight:800;margin-bottom:6px}
   .sub{color:#8e8e93;font-size:13px;margin-bottom:28px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
+  .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;font-size:13px;white-space:nowrap}
   th{background:#f2f2f7;padding:10px 12px;text-align:left;font-weight:700;border-bottom:2px solid #e5e5ea;white-space:nowrap}
-  td{padding:10px 12px;border-bottom:1px solid #e5e5ea;vertical-align:top;line-height:1.5}
+  td{padding:10px 12px;border-bottom:1px solid #e5e5ea;vertical-align:middle;white-space:nowrap}
+  td:nth-child(2){max-width:200px;overflow:hidden;text-overflow:ellipsis}
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#f9f9fb}
   strong{font-weight:700}
   .print-btn{margin-bottom:24px;padding:10px 22px;background:#1c1c1e;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit}
-  @media print{body{padding:20px}.print-btn{display:none}}
+  @media print{body{padding:20px}.print-btn{display:none}.table-wrap{overflow:visible}table{width:100%;font-size:11px}td,th{padding:7px 8px}}
 </style></head><body>
 <h1>${person} 필모그래피</h1>
 <div class="sub">총 ${items.length}편 · 출력일: ${new Date().toLocaleDateString('ko-KR')}</div>
 <button class="print-btn" onclick="window.print()">🖨 PDF 저장</button>
-<table>
+<div class="table-wrap"><table>
   <thead><tr>
     <th>연도</th><th>제목</th><th>구분</th><th>제작사</th><th>역할</th><th>촬영기간</th><th>플랫폼</th><th>메모</th>
   </tr></thead>
   <tbody>${rows}</tbody>
-</table>
+</table></div>
 </body></html>`;
   const w=window.open('','_blank');
   w.document.write(html);
