@@ -581,6 +581,7 @@ input,select,textarea{font-family:inherit}
     <span class="inner-title">필모그래피</span>
     <div class="hdr-right">
       <button class="theme-toggle-inline" onclick="toggleTheme()" id="theme-btn-filmo" title="테마">🌙</button>
+      <button class="add-btn" style="background:var(--red)" onclick="exportFilmoPDF()">PDF</button>
       <button class="add-btn" onclick="openFilmoModal()">+ 추가</button>
     </div>
   </div>
@@ -731,7 +732,16 @@ input,select,textarea{font-family:inherit}
         <option>광고</option><option>뮤직비디오</option><option>다큐멘터리</option><option>기타</option>
       </select>
     </div>
+    <div class="fg"><label class="fl">제작사</label><input class="fi" id="filmo-prod" type="text" placeholder="제작사명 (선택)"></div>
     <div class="fg"><label class="fl">역할</label><input class="fi" id="filmo-role" type="text" placeholder="촬영감독, 감독, 조명..."></div>
+    <div class="fg">
+      <label class="fl">촬영기간</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input class="fi" id="filmo-shoot-start" type="date" style="flex:1">
+        <span style="color:var(--mu);font-size:12px;flex-shrink:0">~</span>
+        <input class="fi" id="filmo-shoot-end" type="date" style="flex:1">
+      </div>
+    </div>
     <div class="fg">
       <label class="fl">공개 플랫폼 (복수 선택 가능)</label>
       <div id="filmo-plat-wrap">
@@ -1643,6 +1653,9 @@ function renderFilmo(){
   c.innerHTML=items.map(f=>{
     const plats=Array.isArray(f.ott)?f.ott:(f.ott?[f.ott]:[]);
     const platBadges=plats.map(p=>`<span class="ott-badge ${OTT_CLASS[p]||''}">${x(p)}</span>`).join('');
+    const shootPeriod=f.shootStart||f.shootEnd
+      ?`${f.shootStart?fmtD(f.shootStart):''}${f.shootStart&&f.shootEnd?' ~ ':''}${f.shootEnd?fmtD(f.shootEnd):''}`
+      :'';
     return `<div class="filmo-item" draggable="true" data-fid="${f.id}" onclick="openFilmoModal('${f.id}')">
       <span class="filmo-year-badge">${f.year||'—'}</span>
       <div class="filmo-title">${x(f.title)}</div>
@@ -1651,6 +1664,9 @@ function renderFilmo(){
         ${platBadges}
         ${f.role?`<span class="filmo-role">${x(f.role)}</span>`:''}
       </div>
+      ${f.prod||shootPeriod?`<div class="filmo-notes" style="margin-top:5px">
+        ${f.prod?`🏢 ${x(f.prod)}`:''}${f.prod&&shootPeriod?' &nbsp;·&nbsp; ':''}${shootPeriod?`🎬 ${x(shootPeriod)}`:''}
+      </div>`:''}
       ${f.notes?`<div class="filmo-notes">${x(f.notes)}</div>`:''}
       <span class="filmo-drag-handle" title="드래그해서 순서 변경">⠿</span>
     </div>`;
@@ -2059,7 +2075,10 @@ function openFilmoModal(id){
   document.getElementById('filmo-title').value=f?.title||'';
   document.getElementById('filmo-year').value=f?.year||new Date().getFullYear();
   document.getElementById('filmo-type').value=f?.type||'단편영화';
+  document.getElementById('filmo-prod').value=f?.prod||'';
   document.getElementById('filmo-role').value=f?.role||'';
+  document.getElementById('filmo-shoot-start').value=f?.shootStart||'';
+  document.getElementById('filmo-shoot-end').value=f?.shootEnd||'';
   setPlatformChips(f?.ott);
   document.getElementById('filmo-notes').value=f?.notes||'';
   document.getElementById('filmo-del-btn').style.display=f?'':'none';
@@ -2072,7 +2091,10 @@ async function saveFilmo(){
   const d={title,
     year:parseInt(document.getElementById('filmo-year').value)||null,
     type:document.getElementById('filmo-type').value,
+    prod:document.getElementById('filmo-prod').value.trim(),
     role:document.getElementById('filmo-role').value.trim(),
+    shootStart:document.getElementById('filmo-shoot-start').value||null,
+    shootEnd:document.getElementById('filmo-shoot-end').value||null,
     ott:platforms,
     notes:document.getElementById('filmo-notes').value.trim()};
   const list=[...(filmo[filmoP]||[])];
@@ -2085,6 +2107,53 @@ async function saveFilmo(){
   await db.collection('filmography').doc(filmoP).set({films:list});
   closeAll(); toast('✅ 저장됐습니다');
 }
+function exportFilmoPDF(){
+  const person=filmoP;
+  const items=(filmo[person]||[]).slice().sort((a,b)=>(b.year||0)-(a.year||0));
+  if(!items.length){toast('필모그래피가 없습니다');return;}
+  const rows=items.map(f=>{
+    const plats=Array.isArray(f.ott)?f.ott:(f.ott?[f.ott]:[]);
+    const period=f.shootStart||f.shootEnd
+      ?`${f.shootStart||''}${f.shootStart&&f.shootEnd?' ~ ':''}${f.shootEnd||''}`:'';
+    return `<tr>
+      <td>${f.year||'—'}</td>
+      <td><strong>${f.title||''}</strong></td>
+      <td>${f.type||''}</td>
+      <td>${f.prod||''}</td>
+      <td>${f.role||''}</td>
+      <td>${period}</td>
+      <td>${plats.join(', ')}</td>
+      <td>${f.notes||''}</td>
+    </tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>${person} 필모그래피</title>
+<style>
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;padding:32px;color:#1c1c1e;font-size:12px}
+  h1{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sub{color:#8e8e93;font-size:12px;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  th{background:#f2f2f7;padding:8px 10px;text-align:left;font-weight:700;border-bottom:2px solid #e5e5ea;white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #e5e5ea;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  strong{font-weight:700}
+  @media print{body{padding:16px}button{display:none}}
+</style></head><body>
+<h1>🎬 ${person} 필모그래피</h1>
+<div class="sub">총 ${items.length}편 · 출력일: ${new Date().toLocaleDateString('ko-KR')}</div>
+<button onclick="window.print()" style="margin-bottom:20px;padding:8px 18px;background:#1c1c1e;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">🖨 PDF 저장</button>
+<table>
+  <thead><tr>
+    <th>연도</th><th>제목</th><th>구분</th><th>제작사</th><th>역할</th><th>촬영기간</th><th>플랫폼</th><th>메모</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
 async function deleteFilmo(){
   if(!editFilmoId||!confirm('삭제하시겠습니까?'))return;
   const list=(filmo[filmoP]||[]).filter(f=>f.id!==editFilmoId);
