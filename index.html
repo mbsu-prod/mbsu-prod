@@ -1098,16 +1098,22 @@ setupListeners().catch(e=>{
 });
 async function setupListeners(){
   _unsubs.forEach(u=>u()); _unsubs=[];
-  let evCheck;
   try {
-    evCheck = await db.collection('events').limit(1).get();
+    // _meta/init 문서가 없을 때만 최초 1회 seed 실행
+    const metaDoc = await db.collection('_meta').doc('init').get();
+    if(!metaDoc.exists){
+      const evCheck = await db.collection('events').limit(1).get();
+      const eqCheck = await db.collection('equipment').limit(1).get();
+      if(evCheck.empty && eqCheck.empty){
+        await seedData();
+      }
+      // 초기화 완료 표시 저장 (이후엔 절대 seed 재실행 안함)
+      await db.collection('_meta').doc('init').set({ seededAt: Date.now() });
+    }
   } catch(e) {
     console.error('[Firestore] initial get failed:', e);
     toast('⚠️ DB 연결 실패: '+e.message);
-    // 연결 실패해도 리스너는 등록 시도
-    evCheck = { empty: false };
   }
-  if(evCheck.empty){ await seedData(); }
   let _evFirstLoad=true;
   _unsubs.push(db.collection('events').onSnapshot(snap=>{
     const newEvents=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1845,12 +1851,13 @@ function openEqModal(id){
   // 사진
   const wrap=document.getElementById('eq-photo-wrap');
   const lbl=document.getElementById('eq-photo-lbl');
-  wrap.innerHTML='';
+  wrap.querySelectorAll('img').forEach(i=>i.remove());
   document.getElementById('eq-photo-file').value='';
   if(e?.photo){
+    if(lbl) lbl.style.display='none';
     const img=document.createElement('img');img.src=e.photo;wrap.appendChild(img);
   } else {
-    lbl.textContent='📷 탭하여 사진 추가';wrap.appendChild(lbl);
+    if(lbl){lbl.style.display='';lbl.textContent='📷 탭하여 사진 추가';}
   }
   // 반출 현황
   const expSec=document.getElementById('eq-export-section');
@@ -1952,7 +1959,9 @@ function compressImage(file, maxPx=400, quality=0.75){
 function previewEqPhoto(input){
   if(!input.files.length) return;
   const wrap=document.getElementById('eq-photo-wrap');
-  wrap.innerHTML='';
+  const lbl=document.getElementById('eq-photo-lbl');
+  wrap.querySelectorAll('img').forEach(i=>i.remove());
+  if(lbl) lbl.style.display='none';
   const img=document.createElement('img');
   img.src=URL.createObjectURL(input.files[0]);
   wrap.appendChild(img);
